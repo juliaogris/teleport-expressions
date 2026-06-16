@@ -133,6 +133,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); }
   }
   .fields > .field .editor { flex: 1; min-height: 0; }
   .fields > .field .editor > textarea { height: 100%; min-height: 0; }
+  /* Widen the spacing between the control groups so the topic picker, example
+     picker, and sugared toggle are not crowded together. */
+  .controls { gap: 1.5rem; }
 }
 
 /* On very wide screens let the content keep growing, so long where clauses
