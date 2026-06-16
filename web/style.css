@@ -159,6 +159,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); }
      the selects are not squashed. */
   .samples { flex: 1 1 100%; }
   .toggle { flex: 1 1 100%; }
+  /* Give the picker labels a common width so the dropdowns line up in a column
+     down the left edge, rather than each starting after its own label. */
+  .samples label { width: 4.5rem; flex: none; }
   /* Drop the fixed widths on mobile so each select fills its row. */
   #topic-select,
   #sample-select {
