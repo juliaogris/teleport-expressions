@@ -101,6 +101,22 @@ function renderNow() {
       text += "\n  " + escapeHtml(k) + ": " + escapeHtml(vars[k]);
     }
   }
+  if (out.allowed && out.allowCode) {
+    text += "\nallow_code: " + escapeHtml(out.allowCode);
+    if (out.allowReason) {
+      text += "\nallow_reason: " + escapeHtml(out.allowReason);
+    }
+  }
+  const hints = out.denyHints || [];
+  if (!out.allowed && hints.length > 0) {
+    text += "\ndeny_hints:";
+    for (const h of hints) {
+      text += "\n  - deny_code: " + escapeHtml(h.denyCode);
+      if (h.denyReason) {
+        text += "\n    deny_reason: " + escapeHtml(h.denyReason);
+      }
+    }
+  }
   resultEl.innerHTML = text;
 }
 

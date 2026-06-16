@@ -63,7 +63,20 @@ func evaluate(this js.Value, args []js.Value) any {
 	for k, v := range res.Vars {
 		vars[k] = v
 	}
-	return map[string]any{"allowed": res.Allowed, "vars": vars}
+	denyHints := make([]any, 0, len(res.DenyHints))
+	for _, h := range res.DenyHints {
+		denyHints = append(denyHints, map[string]any{
+			"denyCode":   h.DenyCode,
+			"denyReason": h.DenyReason,
+		})
+	}
+	return map[string]any{
+		"allowed":     res.Allowed,
+		"vars":        vars,
+		"allowCode":   res.AllowCode,
+		"allowReason": res.AllowReason,
+		"denyHints":   denyHints,
+	}
 }
 
 func errResult(msg string) map[string]any {

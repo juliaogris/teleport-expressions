@@ -38,10 +38,21 @@ type resourcesDoc struct {
 }
 
 // Result is the outcome of evaluating the rules. Vars holds the path segments
-// the matching rule's captures bound, and is nil on a deny.
+// the matching rule's captures bound, and is nil on a deny. On an allow it
+// carries the matching rule's allow code and reason; on a deny it carries every
+// deny hint that fired across the rules.
 type Result struct {
-	Allowed bool
-	Vars    map[string]string
+	Allowed     bool
+	Vars        map[string]string
+	AllowCode   string
+	AllowReason string
+	DenyHints   []DeniedHint
+}
+
+// DeniedHint is one near-miss explanation that fired on a deny.
+type DeniedHint struct {
+	DenyCode   string
+	DenyReason string
 }
 
 // Evaluate parses an app_resources list, compiles the rules into a rule set,
@@ -72,7 +83,17 @@ func Evaluate(resourcesYAML string, in Input) (Result, error) {
 	if err != nil {
 		return Result{}, trace.Wrap(err, "evaluating app_resources")
 	}
-	return Result{Allowed: decision.Allowed, Vars: decision.Vars}, nil
+	hints := make([]DeniedHint, 0, len(decision.DenyHints))
+	for _, h := range decision.DenyHints {
+		hints = append(hints, DeniedHint{DenyCode: h.DenyCode, DenyReason: h.DenyReason})
+	}
+	return Result{
+		Allowed:     decision.Allowed,
+		Vars:        decision.Vars,
+		AllowCode:   decision.AllowCode,
+		AllowReason: decision.AllowReason,
+		DenyHints:   hints,
+	}, nil
 }
 
 // Desugar lowers every rule in an app_resources list to a single where
@@ -88,17 +109,16 @@ func Desugar(resourcesYAML string) (string, error) {
 
 	out := resourcesDoc{AppResources: make([]rm.Rule, 0, len(doc.AppResources))}
 	for i, r := range doc.AppResources {
-		pred, err := r.DesugarPredicate()
+		// DesugaredRule lowers to the bare predicate form and carries the audit
+		// metadata and decode config, so the two surfaces stay equivalent. A
+		// deny hint's default On is materialized, since the bare form has no
+		// path or method clause to default from.
+		dr, err := r.DesugaredRule()
 		if err != nil {
 			return "", trace.Wrap(err, "desugaring rule %d", i)
 		}
-		out.AppResources = append(out.AppResources, rm.Rule{
-			Where: formatPredicate(pred),
-			// Carry the path-decoding config onto the desugared rule, so the
-			// bare predicate form decodes the path the same way the
-			// declarative form did and the two surfaces stay equivalent.
-			URLDecoding: r.URLDecoding,
-		})
+		dr.Where = formatPredicate(dr.Where)
+		out.AppResources = append(out.AppResources, dr)
 	}
 
 	marshalled, err := yaml.Marshal(out)

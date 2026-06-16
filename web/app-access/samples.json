@@ -98,5 +98,20 @@
     "name": "20. URL decoding: decode then allow residual %",
     "rule": "app_resources:\n  # decode_iterations and allow_percent\n  # combine: decode once, then admit any\n  # leftover %.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      decode_iterations: 1\n      allow_percent: true",
     "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
+  },
+  {
+    "name": "21. Allow code and reason",
+    "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: \"User has access to project\"\n    deny_hint:\n      - deny_code: denied_project\n        deny_reason: \"User has NO access to project\"",
+    "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
+  },
+  {
+    "name": "22. Deny hint: path matched, where failed",
+    "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: \"User has access to project\"\n    deny_hint:\n      # No on: defaults to the path and method clause, so this hint fires\n      # when the path matched but the where failed.\n      - deny_code: denied_project\n        deny_reason: \"User has NO access to project\"",
+    "input": "request:\n  method: GET\n  path: /api/v4/projects/gamma/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
+  },
+  {
+    "name": "23. Deny hints across rules, only some fire",
+    "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    deny_hint:\n      - deny_code: denied_project\n        deny_reason: \"Not allowed on this project\"\n  - paths: [\"/api/v4/admin/**\"]\n    where: contains(user.roles, \"admin\")\n    deny_hint:\n      - deny_code: denied_admin\n        deny_reason: \"Admin role required\"",
+    "input": "request:\n  method: GET\n  path: /api/v4/projects/gamma/issues\nidentity:\n  name: bob\n  traits:\n    allowed_projects: [alpha]"
   }
 ]
