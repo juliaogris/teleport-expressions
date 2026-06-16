@@ -8,6 +8,11 @@ const topicSelect = document.getElementById("topic-select");
 const sampleSelect = document.getElementById("sample-select");
 const sugaredCheck = document.getElementById("sugared");
 
+// Set the loading message from JS rather than in the HTML, so the result box
+// has no leading or trailing whitespace under its pre-wrap white-space, which
+// would otherwise render as extra spacing the later messages do not have.
+resultEl.textContent = "Loading WebAssembly module…";
+
 const ruleEditor = CodeEditor.makeEditor(ruleEl, "yaml");
 const inputEditor = CodeEditor.makeEditor(inputEl, "yaml");
 

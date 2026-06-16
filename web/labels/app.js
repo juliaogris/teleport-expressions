@@ -12,6 +12,11 @@ const shareUrlEl = document.getElementById("share-url");
 const shareNameEl = document.getElementById("share-name");
 const shareCopyEl = document.getElementById("share-copy");
 
+// Set the loading message from JS rather than in the HTML, so the result box
+// has no leading or trailing whitespace under its pre-wrap white-space, which
+// would otherwise render as extra spacing the later messages do not have.
+resultEl.textContent = "Loading WebAssembly module…";
+
 const exprEditor = CodeEditor.makeEditor(exprEl, "expr");
 const inputEditor = CodeEditor.makeEditor(inputEl, "yaml");
 
