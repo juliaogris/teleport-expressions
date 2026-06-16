@@ -169,9 +169,9 @@ func (r Rule) desugar() (string, error) {
 func nodeToSource(n *Node) string {
 	// args is the constructor's full argument list. literal and capture lead
 	// with their quoted name; glob and greedy take no leading argument. The
-	// children follow in every case. Building the list and joining once avoids
-	// emitting a stray leading comma for an argument-less constructor that has
-	// children, such as glob(capture(...)).
+	// children follow in every case. Build the list and join it once, so an
+	// argument-less constructor that has children, such as a glob wrapping a
+	// capture, does not emit a stray leading comma.
 	var args []string
 	switch n.kind {
 	case kindLiteral:
