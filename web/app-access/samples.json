@@ -71,7 +71,7 @@
   },
   {
     "name": "15. URL decoding: strict default rejects %2F",
-    "rule": "app_resources:\n  # Default url_decoding: no decode, and any percent byte is rejected.\n  - paths: [\"/files/**\"]",
+    "rule": "app_resources:\n  # url_decoding controls how the request path is normalized before matching.\n  # The default decodes nothing and rejects any percent-encoded byte, so an\n  # encoded slash (%2F), dot (%2E), or semicolon (%3B) is refused outright.\n  # This is the safest default: the matcher sees exactly the bytes the upstream\n  # receives, so an attacker cannot smuggle a separator past a rule by encoding\n  # it. Loosen it only with decode_iterations and allow_percent, as below.\n  - paths: [\"/files/**\"]",
     "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
   },
   {
