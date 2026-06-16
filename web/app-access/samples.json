@@ -78,9 +78,9 @@
     "topic": "combination",
     "examples": [
       {
-        "name": "role required",
-        "rule": "app_resources:\n  - paths: [\"/admin/**\"]\n    where: contains(user.roles, \"admin\")",
-        "input": "request:\n  method: DELETE\n  path: /admin/settings\nidentity:\n  name: bob\n  roles: [admin]"
+        "name": "path, method, and trait",
+        "rule": "app_resources:\n  - paths: [\"/teams/{team}/**\"]\n    methods: [GET]\n    where: contains(user.traits[\"teams\"], vars.team)",
+        "input": "request:\n  method: GET\n  path: /teams/security/dashboards\nidentity:\n  name: alice\n  traits:\n    teams: [security, devs]"
       },
       {
         "name": "carve-out (negation)",
