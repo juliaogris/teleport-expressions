@@ -16,26 +16,31 @@
     username, and user traits. Runs entirely in your browser via WebAssembly.
   </p>
 
-  <div class="field">
-    <label for="expr">Label expression</label>
-    <textarea id="expr" spellcheck="false"></textarea>
-  </div>
-
-  <div class="field">
-    <label for="input">
-      Input <span class="hint">(YAML: labels, username, traits)</span>
-    </label>
-    <textarea id="input" spellcheck="false"></textarea>
-  </div>
-
-  <div class="row">
-    <button id="evaluate" class="primary" disabled>Evaluate</button>
+  <div class="row controls">
     <span class="samples">
       <label for="sample-select">Sample:</label>
       <button id="prev" type="button" title="Previous sample">&larr;</button>
       <select id="sample-select"></select>
       <button id="next" type="button" title="Next sample">&rarr;</button>
     </span>
+  </div>
+
+  <div class="fields">
+    <div class="field">
+      <label for="expr">Label expression</label>
+      <textarea id="expr" spellcheck="false"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="input">
+        Input <span class="hint">(YAML: labels, username, traits)</span>
+      </label>
+      <textarea id="input" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="evaluate" class="primary" disabled>Evaluate</button>
   </div>
 
   <div id="result" aria-live="polite">Loading WebAssembly module&hellip;</div>

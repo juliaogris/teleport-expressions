@@ -49,7 +49,7 @@ textarea, input[type=text] {
 textarea:focus, input:focus { outline: none; border-color: var(--accent); }
 #expr { min-height: 6rem; }
 #rule { min-height: 22rem; }
-#input { min-height: 8rem; }
+#input { min-height: 10rem; }
 
 /* Syntax-highlight overlay: a transparent textarea layered over a <pre> that
    mirrors its text with colored tokens. The single visible border lives on the
@@ -110,6 +110,15 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); }
 .t-key { color: #79c0ff; }
 .t-comment { color: #8b949e; font-style: italic; }
 .row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.controls { margin-bottom: 1.25rem; }
+
+/* Stack the two editors, side by side once the viewport is wide enough. */
+.fields { display: flex; flex-direction: column; gap: 1.25rem; }
+.fields > .field { margin-bottom: 0; }
+@media (min-width: 60rem) {
+  .fields { flex-direction: row; align-items: flex-start; }
+  .fields > .field { flex: 1; min-width: 0; }
+}
 button {
   border: 1px solid var(--border);
   background: var(--panel);
@@ -137,8 +146,9 @@ button:disabled { opacity: 0.5; cursor: default; }
   cursor: pointer;
 }
 .toggle input { cursor: pointer; accent-color: var(--accent); }
-.samples { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
+.samples { display: flex; align-items: center; gap: 0.4rem; }
 .samples label { margin: 0; font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+.samples button { padding: 0.5rem 0.7rem; }
 .samples select {
   background: var(--panel);
   color: var(--text);
