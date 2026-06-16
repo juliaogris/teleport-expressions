@@ -5,16 +5,28 @@ const inputEl = document.getElementById("input");
 const resultEl = document.getElementById("result");
 const evaluateBtn = document.getElementById("evaluate");
 const sampleSelect = document.getElementById("sample-select");
+const sugaredCheck = document.getElementById("sugared");
 
 const ruleEditor = CodeEditor.makeEditor(ruleEl, "yaml");
 const inputEditor = CodeEditor.makeEditor(inputEl, "yaml");
 
 let samples = [];
 
-function loadSample(index) {
-  const s = samples[index];
+// loadCurrent loads the selected sample into the fields, honoring the sugared
+// checkbox. When sugared is unchecked, it asks the WebAssembly module to lower
+// the rules to their bare predicate form. The samples are authored sugared, so
+// the desugared form is always computed, never hand-written.
+function loadCurrent() {
+  const s = samples[sampleSelect.value];
   if (!s) return;
-  ruleEl.value = s.rule;
+  let ruleText = s.rule;
+  if (!sugaredCheck.checked && typeof desugarAppResources === "function") {
+    const out = desugarAppResources(s.rule);
+    if (out && !out.error) {
+      ruleText = out.yaml;
+    }
+  }
+  ruleEl.value = ruleText;
   inputEl.value = s.input;
   ruleEditor.update();
   inputEditor.update();
@@ -56,7 +68,8 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;");
 }
 
-sampleSelect.addEventListener("change", () => loadSample(sampleSelect.value));
+sampleSelect.addEventListener("change", loadCurrent);
+sugaredCheck.addEventListener("change", loadCurrent);
 evaluateBtn.addEventListener("click", render);
 
 // Load the samples, populate the dropdown, and show the first one.
@@ -71,7 +84,7 @@ fetch("samples.json")
       opt.textContent = s.name;
       sampleSelect.appendChild(opt);
     });
-    loadSample(0);
+    loadCurrent();
   });
 
 // Load and start the WebAssembly module, then enable evaluation.

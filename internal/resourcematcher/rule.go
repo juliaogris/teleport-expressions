@@ -107,6 +107,18 @@ func (r Rule) Compile() (*CompiledRule, error) {
 	return &CompiledRule{pred: pred, decode: r.URLDecoding}, nil
 }
 
+// DesugarPredicate returns the predicate source a rule lowers to. A rule in the
+// bare predicate form returns its predicate unchanged; a rule in the
+// declarative form returns the predicate its paths, methods, and where lower
+// to. This is added on top of the verbatim resourcematcher package so the web
+// tool can show a declarative rule's equivalent predicate.
+func (r Rule) DesugarPredicate() (string, error) {
+	if r.Pred != "" {
+		return r.Pred, nil
+	}
+	return r.desugar()
+}
+
 // desugar lowers the declarative fields to an equivalent predicate string. It
 // compiles each path pattern to the canonical matcher tree and emits the
 // matcher constructors as source, so the desugared declarative form parses to

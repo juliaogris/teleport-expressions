@@ -20,8 +20,23 @@ import (
 
 func main() {
 	js.Global().Set("evaluateAppAccessRule", js.FuncOf(evaluate))
-	// Block forever so the registered function stays callable.
+	js.Global().Set("desugarAppResources", js.FuncOf(desugar))
+	// Block forever so the registered functions stay callable.
 	select {}
+}
+
+// desugar is called from JavaScript as desugarAppResources(resourcesYAML). It
+// returns an object with a yaml field holding the desugared app_resources, or
+// a string error field on failure.
+func desugar(this js.Value, args []js.Value) any {
+	if len(args) != 1 {
+		return map[string]any{"error": "expected one argument: app_resources YAML"}
+	}
+	out, err := appaccess.Desugar(args[0].String())
+	if err != nil {
+		return map[string]any{"error": err.Error()}
+	}
+	return map[string]any{"yaml": out}
 }
 
 // evaluate is called from JavaScript as evaluateAppAccessRule(ruleYAML,

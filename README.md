@@ -64,13 +64,19 @@ and the functions `set`, `contains`, `contains_any`, `contains_all`,
 
 ## App-access rules
 
-An app-access rule uses either the declarative fields (`paths`, `methods`,
-`where`) or a single bare `pred`, never both. A path pattern maps `{name}` to a
-capture, `*` to a single segment, and `**` to a trailing greedy match. A `where`
-or `pred` condition reads the request (`request.method`, `request.path`), the
-identity (`user.name`, `user.roles`, `user.traits`), and the captures a match
-bound (`vars.<name>`). The input is YAML holding a `request` (`method`, `path`)
-and an `identity` (`name`, `roles`, `traits`).
+The app-access evaluator takes an `app_resources` list, the field a role
+carries alongside `app_labels`. The rules are additive: a request is allowed if
+any rule matches. Each rule uses either the declarative fields (`paths`,
+`methods`, `where`) or a single bare `pred`, never both. A path pattern maps
+`{name}` to a capture, `*` to a single segment, and `**` to a trailing greedy
+match. A `where` or `pred` condition reads the request (`request.method`,
+`request.path`), the identity (`user.name`, `user.roles`, `user.traits`), and
+the captures a match bound (`vars.<name>`). The input is YAML holding a
+`request` (`method`, `path`) and an `identity` (`name`, `roles`, `traits`).
+
+The page's sugared checkbox toggles each example between its declarative form
+and the predicate it lowers to. The desugared form is computed live by the
+evaluator, so it always matches what the declarative form compiles to.
 
 ## Deployment
 

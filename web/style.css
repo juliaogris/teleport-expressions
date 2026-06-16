@@ -121,6 +121,17 @@ button.primary {
   font-weight: 600;
 }
 button:disabled { opacity: 0.5; cursor: default; }
+.toggle {
+  margin: 0;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+.toggle input { cursor: pointer; accent-color: var(--accent); }
 .samples { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
 .samples label { margin: 0; font-weight: 400; color: var(--muted); font-size: 0.85rem; }
 .samples select {

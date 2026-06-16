@@ -73,3 +73,29 @@ func Evaluate(resourcesYAML string, in Input) (Result, error) {
 	}
 	return Result{Allowed: decision.Allowed, Vars: decision.Vars}, nil
 }
+
+// Desugar lowers every rule in an app_resources list to its bare predicate
+// form and returns the resulting app_resources YAML. A rule already in the
+// predicate form is returned unchanged. It lets the web page show the
+// predicate a declarative rule compiles to.
+func Desugar(resourcesYAML string) (string, error) {
+	var doc resourcesDoc
+	if err := yaml.Unmarshal([]byte(resourcesYAML), &doc); err != nil {
+		return "", fmt.Errorf("parsing app_resources YAML: %w", err)
+	}
+
+	out := resourcesDoc{AppResources: make([]rm.Rule, 0, len(doc.AppResources))}
+	for i, r := range doc.AppResources {
+		pred, err := r.DesugarPredicate()
+		if err != nil {
+			return "", trace.Wrap(err, "desugaring rule %d", i)
+		}
+		out.AppResources = append(out.AppResources, rm.Rule{Pred: pred})
+	}
+
+	marshalled, err := yaml.Marshal(out)
+	if err != nil {
+		return "", trace.Wrap(err, "encoding app_resources")
+	}
+	return string(marshalled), nil
+}
