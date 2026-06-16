@@ -93,5 +93,10 @@
     "name": "19. URL decoding: allow_percent keeps literal %",
     "rule": "app_resources:\n  # allow_percent admits a residual %, so a%2Fb stays one segment.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      allow_percent: true",
     "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
+  },
+  {
+    "name": "20. URL decoding: decode then allow residual %",
+    "rule": "app_resources:\n  # decode_iterations and allow_percent\n  # combine: decode once, then admit any\n  # leftover %.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      decode_iterations: 1\n      allow_percent: true",
+    "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
   }
 ]
