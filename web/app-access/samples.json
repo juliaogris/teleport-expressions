@@ -46,31 +46,26 @@
   },
   {
     "name": "10. Carve-out (negation)",
-    "rule": "app_resources:\n  - where: path.match(greedy()) && !path.match(literal(\"admin\", greedy()))",
+    "rule": "app_resources:\n  - where: |-\n      path.match(greedy()) &&\n      !path.match(literal(\"admin\", greedy()))",
     "input": "request:\n  method: GET\n  path: /api/users\nidentity:\n  name: bob"
   },
   {
-    "name": "11. where holds the whole predicate",
-    "rule": "app_resources:\n  - where: path.match(literal(\"metrics\")) && request.method == \"GET\"",
-    "input": "request:\n  method: GET\n  path: /metrics\nidentity:\n  name: bob"
-  },
-  {
-    "name": "12. Literal chain, nested form",
-    "rule": "app_resources:\n  # literal() splits its text on \"/\", so this nested chain is the same\n  # matcher as the contracted literal(\"api/v4/buildinfo\").\n  - where: path.match(literal(\"api\", literal(\"v4\", literal(\"buildinfo\"))))",
+    "name": "11. Literal chain, nested form",
+    "rule": "app_resources:\n  # literal() splits its text on \"/\", so this nested chain is the same\n  # matcher as the contracted literal(\"api/v4/buildinfo\").\n  - where: |-\n      path.match(\n        literal(\n          \"api\",\n          literal(\n            \"v4\",\n            literal(\n              \"buildinfo\"))))",
     "input": "request:\n  method: GET\n  path: /api/v4/buildinfo\nidentity:\n  name: bob"
   },
   {
-    "name": "13. Additive list (two rules)",
+    "name": "12. Additive list (two rules)",
     "rule": "app_resources:\n  - paths: [\"/public/**\"]\n  - paths: [\"/static/**\"]",
     "input": "request:\n  method: GET\n  path: /static/css/app.css\nidentity:\n  name: bob"
   },
   {
-    "name": "14. Denied: wrong method",
+    "name": "13. Denied: wrong method",
     "rule": "app_resources:\n  - paths: [\"/api/**\"]\n    methods: [GET]",
     "input": "request:\n  method: POST\n  path: /api/users\nidentity:\n  name: bob"
   },
   {
-    "name": "15. Anti-pattern (commented out)",
+    "name": "14. Anti-pattern (commented out)",
     "rule": "app_resources:\n  - paths:\n      - \"/api/v4/projects/{project}/**\"\n      # - \"/api/status\"   # Invalid: {project} must be bound for every path\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
     "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
   }

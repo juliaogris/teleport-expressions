@@ -102,14 +102,54 @@ func Desugar(resourcesYAML string) (string, error) {
 	return string(marshalled), nil
 }
 
-// formatPredicate reformats a one-line predicate into an indented multi-line
-// form so the matcher tree's nesting is visible. It breaks after "(", ",", and
+// compactWhitespace collapses every run of whitespace outside string literals
+// to a single space, and drops spaces that sit just inside "(", or just before
+// ")" or ",". It normalizes a predicate that an author may have already wrapped
+// over several lines, so formatPredicate can reformat it from a canonical form
+// rather than layering its own breaks on top of the author's and leaving blank
+// lines and stray indentation.
+func compactWhitespace(s string) string {
+	var b strings.Builder
+	inString := false
+	pendingSpace := false
+	var last byte
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inString {
+			b.WriteByte(c)
+			last = c
+			if c == '"' {
+				inString = false
+			}
+			continue
+		}
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			pendingSpace = true
+			continue
+		}
+		if pendingSpace && b.Len() > 0 && last != '(' && c != ')' && c != ',' {
+			b.WriteByte(' ')
+		}
+		pendingSpace = false
+		b.WriteByte(c)
+		last = c
+		if c == '"' {
+			inString = true
+		}
+	}
+	return b.String()
+}
+
+// formatPredicate reformats a predicate into an indented multi-line form so the
+// matcher tree's nesting is visible. It first collapses the input to a
+// canonical spacing with compactWhitespace, then breaks after "(", ",", and
 // "&&". Closing parentheses stay on the line they close, so the result remains
 // parseable: the engine parses Go expression syntax, where a line may end in
 // "(", ",", or an operator, but a line ending in ")" inside an argument list
 // would have a semicolon inserted and fail to parse. An empty "()" is kept on
 // one line.
 func formatPredicate(s string) string {
+	s = compactWhitespace(s)
 	var b strings.Builder
 	depth := 0
 	inString := false

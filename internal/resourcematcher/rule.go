@@ -148,7 +148,14 @@ func (r Rule) desugar() (string, error) {
 	}
 
 	if r.Where != "" {
-		clauses = append(clauses, "("+r.Where+")")
+		// Parenthesize the where only when it is ANDed with a path or method
+		// clause, where the grouping matters. When the where is the whole
+		// predicate, the outer parentheses add nothing, so emit it bare.
+		where := r.Where
+		if len(clauses) > 0 {
+			where = "(" + where + ")"
+		}
+		clauses = append(clauses, where)
 	}
 
 	return strings.Join(clauses, " && "), nil
