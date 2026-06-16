@@ -1,56 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Teleport label expression evaluator</title>
-<link rel="icon" type="image/png" href="../favicon.png">
-<link rel="stylesheet" href="../style.css">
-</head>
-<body>
-<main>
-  <h1>Teleport label expression evaluator</h1>
-  <p class="lede">
-    Evaluate a Teleport label expression against a resource's labels, a
-    username, and user traits.
-  </p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Teleport label expression evaluator</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Teleport label expression evaluator</h1>
+      <p class="lede">
+        Evaluate a Teleport label expression against a resource's labels, a
+        username, and user traits.
+      </p>
 
-  <div class="row controls">
-    <span class="samples">
-      <label for="sample-select">Sample:</label>
-      <select id="sample-select"></select>
-    </span>
-    <span class="stepper">
-      <button id="prev" type="button" title="Previous sample">&larr;</button>
-      <button id="next" type="button" title="Next sample">&rarr;</button>
-    </span>
-    <button id="evaluate" class="primary" title="Evaluate (⌘/Ctrl + Enter)" disabled>Evaluate</button>
-  </div>
+      <div class="row controls">
+        <span class="samples">
+          <label for="sample-select">Sample:</label>
+          <select id="sample-select"></select>
+        </span>
+        <span class="stepper">
+          <button id="prev" type="button" title="Previous sample">
+            &larr;
+          </button>
+          <button id="next" type="button" title="Next sample">&rarr;</button>
+        </span>
+        <button
+          id="evaluate"
+          class="primary"
+          title="Evaluate (⌘/Ctrl + Enter)"
+          disabled
+        >
+          Evaluate
+        </button>
+      </div>
 
-  <div class="fields">
-    <div class="field">
-      <label for="expr">Label expression</label>
-      <textarea id="expr" spellcheck="false"></textarea>
-    </div>
+      <div class="fields">
+        <div class="field">
+          <label for="expr">Label expression</label>
+          <textarea id="expr" spellcheck="false"></textarea>
+        </div>
 
-    <div class="field">
-      <label for="input">
-        Input <span class="hint">(YAML: labels, username, traits)</span>
-      </label>
-      <textarea id="input" spellcheck="false"></textarea>
-    </div>
-  </div>
+        <div class="field">
+          <label for="input">
+            Input <span class="hint">(YAML: labels, username, traits)</span>
+          </label>
+          <textarea id="input" spellcheck="false"></textarea>
+        </div>
+      </div>
 
-  <div id="result" class="idle" aria-live="polite">Loading WebAssembly module&hellip;</div>
+      <div id="result" class="idle" aria-live="polite">
+        Loading WebAssembly module&hellip;
+      </div>
 
-  <footer>
-    Parser specification copied from Teleport
-    <code>lib/services/label_expressions.go</code> at tag v18.8.3.
-  </footer>
-</main>
+      <footer>
+        Parser specification copied from Teleport
+        <code>lib/services/label_expressions.go</code> at tag v18.8.3.
+      </footer>
+    </main>
 
-<script src="wasm_exec.js"></script>
-<script src="../highlight.js"></script>
-<script src="app.js"></script>
-</body>
+    <script src="wasm_exec.js"></script>
+    <script src="../highlight.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

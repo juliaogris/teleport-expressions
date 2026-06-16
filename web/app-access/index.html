@@ -1,60 +1,74 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Teleport app-access rule evaluator</title>
-<link rel="icon" type="image/png" href="../favicon.png">
-<link rel="stylesheet" href="../style.css">
-</head>
-<body>
-<main>
-  <h1>Teleport app-access rule evaluator</h1>
-  <p class="lede">
-    Evaluate a role's <code>app_resources</code> rules against an HTTP request
-    and a caller identity. The rules are an additive list: a request is allowed
-    if any rule matches a path, optionally a method, and an identity condition
-    over the segments its captures bind.
-  </p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Teleport app-access rule evaluator</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Teleport app-access rule evaluator</h1>
+      <p class="lede">
+        Evaluate a role's <code>app_resources</code> rules against an HTTP
+        request and a caller identity. The rules are an additive list: a request
+        is allowed if any rule matches a path, optionally a method, and an
+        identity condition over the segments its captures bind.
+      </p>
 
-  <div class="row controls">
-    <span class="samples">
-      <label for="topic-select">Topic:</label>
-      <select id="topic-select"></select>
-    </span>
-    <span class="samples">
-      <label for="sample-select">Example:</label>
-      <select id="sample-select"></select>
-    </span>
-    <label class="toggle"><input type="checkbox" id="sugared" checked> sugared</label>
-    <span class="stepper">
-      <button id="prev" type="button" title="Previous example">&larr;</button>
-      <button id="next" type="button" title="Next example">&rarr;</button>
-    </span>
-    <button id="evaluate" class="primary" title="Evaluate (⌘/Ctrl + Enter)" disabled>Evaluate</button>
-  </div>
+      <div class="row controls">
+        <span class="samples">
+          <label for="topic-select">Topic:</label>
+          <select id="topic-select"></select>
+        </span>
+        <span class="samples">
+          <label for="sample-select">Example:</label>
+          <select id="sample-select"></select>
+        </span>
+        <label class="toggle"
+          ><input type="checkbox" id="sugared" checked /> sugared</label
+        >
+        <span class="stepper">
+          <button id="prev" type="button" title="Previous example">
+            &larr;
+          </button>
+          <button id="next" type="button" title="Next example">&rarr;</button>
+        </span>
+        <button
+          id="evaluate"
+          class="primary"
+          title="Evaluate (⌘/Ctrl + Enter)"
+          disabled
+        >
+          Evaluate
+        </button>
+      </div>
 
-  <div class="fields">
-    <div class="field">
-      <label for="rule">
-        app_resources <span class="hint">(YAML: a list of rules, as in a role spec)</span>
-      </label>
-      <textarea id="rule" spellcheck="false"></textarea>
-    </div>
+      <div class="fields">
+        <div class="field">
+          <label for="rule">
+            app_resources
+            <span class="hint">(YAML: a list of rules, as in a role spec)</span>
+          </label>
+          <textarea id="rule" spellcheck="false"></textarea>
+        </div>
 
-    <div class="field">
-      <label for="input">
-        Input <span class="hint">(YAML: request, identity)</span>
-      </label>
-      <textarea id="input" spellcheck="false"></textarea>
-    </div>
-  </div>
+        <div class="field">
+          <label for="input">
+            Input <span class="hint">(YAML: request, identity)</span>
+          </label>
+          <textarea id="input" spellcheck="false"></textarea>
+        </div>
+      </div>
 
-  <div id="result" class="idle" aria-live="polite">Loading WebAssembly module&hellip;</div>
-</main>
+      <div id="result" class="idle" aria-live="polite">
+        Loading WebAssembly module&hellip;
+      </div>
+    </main>
 
-<script src="wasm_exec.js"></script>
-<script src="../highlight.js"></script>
-<script src="app.js"></script>
-</body>
+    <script src="wasm_exec.js"></script>
+    <script src="../highlight.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

@@ -1,0 +1,4 @@
+# Generated and copied in by `make wasm`; not ours to format.
+wasm_exec.js
+*.wasm
+bin/

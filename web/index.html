@@ -1,42 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Teleport expression evaluators</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<main>
-  <h1>Teleport expression evaluators</h1>
-  <p class="lede">
-    Small in-browser evaluators for Teleport's predicate languages, built from
-    Teleport's own parser code compiled to WebAssembly. Each runs entirely in
-    your browser.
-  </p>
-
-  <ul class="toc">
-    <li>
-      <a href="labels/">Label expression evaluator</a>
-      <p>
-        Evaluate a label expression against a resource's labels, a username,
-        and user traits, the predicate used in Teleport role label matching.
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Teleport expression evaluators</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Teleport expression evaluators</h1>
+      <p class="lede">
+        Small in-browser evaluators for Teleport's predicate languages, built
+        from Teleport's own parser code compiled to WebAssembly. Each runs
+        entirely in your browser.
       </p>
-    </li>
-    <li>
-      <a href="app-access/">App-access rule evaluator</a>
-      <p>
-        Evaluate an app-access resource rule against an HTTP request and a
-        caller identity, including path matching with captures.
-      </p>
-    </li>
-  </ul>
 
-  <footer>
-    Source:
-    <a href="https://github.com/juliaogris/teleport-expressions">github.com/juliaogris/teleport-expressions</a>
-  </footer>
-</main>
-</body>
+      <ul class="toc">
+        <li>
+          <a href="labels/">Label expression evaluator</a>
+          <p>
+            Evaluate a label expression against a resource's labels, a username,
+            and user traits, the predicate used in Teleport role label matching.
+          </p>
+        </li>
+        <li>
+          <a href="app-access/">App-access rule evaluator</a>
+          <p>
+            Evaluate an app-access resource rule against an HTTP request and a
+            caller identity, including path matching with captures.
+          </p>
+        </li>
+      </ul>
+
+      <footer>
+        Source:
+        <a href="https://github.com/juliaogris/teleport-expressions"
+          >github.com/juliaogris/teleport-expressions</a
+        >
+      </footer>
+    </main>
+  </body>
 </html>

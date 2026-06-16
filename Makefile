@@ -1,7 +1,9 @@
 GO ?= go
 WASM_EXEC := $(shell $(GO) env GOROOT)/lib/wasm/wasm_exec.js
+PRETTIER ?= npx --yes prettier@3.6.2
+WEB_GLOB := 'web/**/*.{js,html,json}'
 
-.PHONY: all build wasm test serve clean
+.PHONY: all build wasm test serve clean fmt-web lint-web
 
 all: build wasm
 
@@ -27,3 +29,11 @@ serve: wasm
 
 clean:
 	rm -rf bin web/labels/eval.wasm web/app-access/eval.wasm
+
+# Format the web JavaScript, HTML, and JSON with Prettier.
+fmt-web:
+	$(PRETTIER) --write $(WEB_GLOB)
+
+# Check that the web sources are Prettier-clean, without rewriting them.
+lint-web:
+	$(PRETTIER) --check $(WEB_GLOB)

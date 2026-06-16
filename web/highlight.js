@@ -7,10 +7,7 @@
 // identical box model so the characters line up exactly.
 window.CodeEditor = (function () {
   function escapeHtml(s) {
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   function span(cls, text) {
