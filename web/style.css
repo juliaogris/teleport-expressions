@@ -24,9 +24,8 @@ main {
 }
 h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
 p.lede { color: var(--muted); margin: 0 0 1.75rem; }
-p.back { margin: 0 0 1.25rem; font-size: 0.85rem; }
-p.back a, footer a, .toc a { color: var(--accent); text-decoration: none; }
-p.back a:hover, .toc a:hover { text-decoration: underline; }
+footer a, .toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
 label {
   display: block;
   font-weight: 600;
