@@ -152,6 +152,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); }
      controls. */
   h1 { font-size: 1.1rem; margin-bottom: 1.25rem; }
   p.lede { display: none; }
+  /* The field-label format hints wrap onto several lines on a narrow screen,
+     and the editor content already shows the YAML format, so hide them. */
+  label .hint { display: none; }
   /* Give the sample picker the full row width so the select does not get
      squashed between the prev and next buttons. */
   .samples { flex: 1 1 100%; }
