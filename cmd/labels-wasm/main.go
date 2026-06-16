@@ -1,10 +1,10 @@
-// Command wasm exposes the label expression evaluator to JavaScript when built
-// for the js/wasm target. It registers a global evaluateLabelExpression
+// Command labels-wasm exposes the label expression evaluator to JavaScript when
+// built for the js/wasm target. It registers a global evaluateLabelExpression
 // function that the accompanying web page calls.
 //
 // Build with:
 //
-//	GOOS=js GOARCH=wasm go build -o web/eval.wasm ./cmd/wasm
+//	GOOS=js GOARCH=wasm go build -o web/labels/eval.wasm ./cmd/labels-wasm
 
 //go:build js && wasm
 

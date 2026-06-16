@@ -34,9 +34,10 @@ func mustInput(t *testing.T, raw string) appaccess.Input {
 
 func TestEvaluate(t *testing.T) {
 	const captureRule = `
-paths: ["/api/v4/projects/{project}/**"]
-methods: [GET]
-where: contains(user.traits["allowed_projects"], vars.project)
+app_resources:
+  - paths: ["/api/v4/projects/{project}/**"]
+    methods: [GET]
+    where: contains(user.traits["allowed_projects"], vars.project)
 `
 	allowedInput := mustInput(t, `
 request:
@@ -93,15 +94,34 @@ identity:
 		},
 		{
 			name: "bare predicate form",
-			rule: `pred: path.match(greedy())`,
+			rule: "app_resources:\n  - pred: path.match(greedy())",
 			in:   allowedInput,
 			want: true,
 		},
 		{
+			name: "additive: second rule in the list matches",
+			rule: `
+app_resources:
+  - paths: ["/admin/**"]
+  - paths: ["/api/v4/projects/{project}/**"]
+    methods: [GET]
+    where: contains(user.traits["allowed_projects"], vars.project)
+`,
+			in:       allowedInput,
+			want:     true,
+			wantVars: map[string]string{"project": "alpha"},
+		},
+		{
 			name:    "both surfaces is a compile error",
-			rule:    "paths: [/api/**]\npred: path.match(greedy())",
+			rule:    "app_resources:\n  - paths: [/api/**]\n    pred: path.match(greedy())",
 			in:      allowedInput,
 			wantErr: true,
+		},
+		{
+			name: "empty list denies",
+			rule: "app_resources: []",
+			in:   allowedInput,
+			want: false,
 		},
 	}
 

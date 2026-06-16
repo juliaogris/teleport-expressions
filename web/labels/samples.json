@@ -1,0 +1,67 @@
+[
+  {
+    "name": "Label equality",
+    "expr": "labels[\"env\"] == \"prod\"",
+    "input": "labels:\n  env: prod\n  team: security\nusername: alice@example.com\ntraits:\n  groups: [devs, security]"
+  },
+  {
+    "name": "Negation (not dev)",
+    "expr": "labels[\"env\"] != \"dev\"",
+    "input": "labels:\n  env: prod\n  team: security"
+  },
+  {
+    "name": "Boolean AND",
+    "expr": "labels[\"env\"] == \"prod\" && labels[\"team\"] == \"security\"",
+    "input": "labels:\n  env: prod\n  team: security"
+  },
+  {
+    "name": "Boolean OR",
+    "expr": "labels[\"env\"] == \"staging\" || labels[\"env\"] == \"prod\"",
+    "input": "labels:\n  env: prod"
+  },
+  {
+    "name": "contains: trait holds owner",
+    "expr": "contains(user.spec.traits[\"groups\"], labels[\"owner\"])",
+    "input": "labels:\n  owner: devs\ntraits:\n  groups: [devs, security]"
+  },
+  {
+    "name": "contains_any",
+    "expr": "contains_any(user.spec.traits[\"groups\"], set(\"admins\", \"security\"))",
+    "input": "traits:\n  groups: [devs, security]"
+  },
+  {
+    "name": "contains_all",
+    "expr": "contains_all(user.spec.traits[\"groups\"], set(\"devs\", \"security\"))",
+    "input": "traits:\n  groups: [devs, security]"
+  },
+  {
+    "name": "labels_matching glob",
+    "expr": "contains(labels_matching(\"team-*\"), \"platform\")",
+    "input": "labels:\n  team-a: platform\n  team-b: storage"
+  },
+  {
+    "name": "regexp.match",
+    "expr": "regexp.match(set(labels[\"team\"]), \"^sec.*$\")",
+    "input": "labels:\n  team: security"
+  },
+  {
+    "name": "email.local",
+    "expr": "contains(email.local(set(user.metadata.name)), \"alice\")",
+    "input": "username: alice@example.com"
+  },
+  {
+    "name": "strings.upper",
+    "expr": "contains(strings.upper(set(labels[\"region\"])), \"US-WEST-2\")",
+    "input": "labels:\n  region: us-west-2"
+  },
+  {
+    "name": "regexp.replace strips domain",
+    "expr": "contains(regexp.replace(set(user.metadata.name), \"@.*$\", \"\"), \"alice\")",
+    "input": "username: alice@example.com"
+  },
+  {
+    "name": "No match (for contrast)",
+    "expr": "labels[\"env\"] == \"prod\"",
+    "input": "labels:\n  env: staging"
+  }
+]

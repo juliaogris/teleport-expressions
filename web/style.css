@@ -47,8 +47,8 @@ textarea, input[type=text] {
   resize: vertical;
 }
 textarea:focus, input:focus { outline: none; border-color: var(--accent); }
-#expr, #rule { min-height: 4rem; }
-#input { min-height: 9rem; }
+#expr, #rule { min-height: 6.5rem; }
+#input { min-height: 12rem; }
 
 /* Syntax-highlight overlay: a transparent textarea layered over a <pre> that
    mirrors its text with colored tokens. Both must share an identical box model
@@ -86,6 +86,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); }
   z-index: 1;
   background: transparent;
   color: transparent;
+  /* WebKit needs this explicitly, or the textarea's own text shows through on
+     top of the colored layer and looks like a shadow. */
+  -webkit-text-fill-color: transparent;
   caret-color: var(--text);
   resize: vertical;
 }
@@ -118,8 +121,18 @@ button.primary {
   font-weight: 600;
 }
 button:disabled { opacity: 0.5; cursor: default; }
-.samples { margin-left: auto; }
-.samples span { color: var(--muted); font-size: 0.85rem; margin-right: 0.3rem; }
+.samples { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
+.samples label { margin: 0; font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+.samples select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.samples select:focus { outline: none; border-color: var(--accent); }
 #result {
   margin-top: 1.5rem;
   border: 1px solid var(--border);
@@ -133,11 +146,11 @@ button:disabled { opacity: 0.5; cursor: default; }
   word-break: break-word;
 }
 #result.match { border-color: var(--ok); }
-#result.nomatch { border-color: var(--muted); }
+#result.nomatch { border-color: var(--err); }
 #result.error { border-color: var(--err); }
 .verdict { font-weight: 700; }
 .verdict.match { color: var(--ok); }
-.verdict.nomatch { color: var(--muted); }
+.verdict.nomatch { color: var(--err); }
 .verdict.error { color: var(--err); }
 footer { color: var(--muted); font-size: 0.8rem; margin-top: 2.5rem; }
 

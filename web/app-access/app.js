@@ -1,48 +1,21 @@
 "use strict";
 
-// Two sample scenarios. Each fills both the rule and the input so a visitor can
-// evaluate immediately.
-const SAMPLES = {
-  sample1: {
-    rule: [
-      'paths: ["/api/v4/projects/{project}/**"]',
-      "methods: [GET]",
-      'where: contains(user.traits["allowed_projects"], vars.project)',
-    ].join("\n"),
-    input: [
-      "request:",
-      "  method: GET",
-      "  path: /api/v4/projects/alpha/issues",
-      "identity:",
-      "  name: alice",
-      "  traits:",
-      "    allowed_projects: [alpha, beta]",
-    ].join("\n"),
-  },
-  sample2: {
-    rule: 'pred: path.match(literal("api", greedy())) && contains(user.roles, "admin")',
-    input: [
-      "request:",
-      "  method: DELETE",
-      "  path: /api/anything/here",
-      "identity:",
-      "  name: bob",
-      "  roles: [admin]",
-    ].join("\n"),
-  },
-};
-
 const ruleEl = document.getElementById("rule");
 const inputEl = document.getElementById("input");
 const resultEl = document.getElementById("result");
 const evaluateBtn = document.getElementById("evaluate");
+const sampleSelect = document.getElementById("sample-select");
 
 const ruleEditor = CodeEditor.makeEditor(ruleEl, "yaml");
 const inputEditor = CodeEditor.makeEditor(inputEl, "yaml");
 
-function loadSample(name) {
-  ruleEl.value = SAMPLES[name].rule;
-  inputEl.value = SAMPLES[name].input;
+let samples = [];
+
+function loadSample(index) {
+  const s = samples[index];
+  if (!s) return;
+  ruleEl.value = s.rule;
+  inputEl.value = s.input;
   ruleEditor.update();
   inputEditor.update();
 }
@@ -83,16 +56,29 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;");
 }
 
-document.getElementById("sample1").addEventListener("click", () => loadSample("sample1"));
-document.getElementById("sample2").addEventListener("click", () => loadSample("sample2"));
+sampleSelect.addEventListener("change", () => loadSample(sampleSelect.value));
 evaluateBtn.addEventListener("click", render);
+
+// Load the samples, populate the dropdown, and show the first one.
+fetch("samples.json")
+  .then((r) => r.json())
+  .then((data) => {
+    samples = data;
+    sampleSelect.innerHTML = "";
+    samples.forEach((s, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = s.name;
+      sampleSelect.appendChild(opt);
+    });
+    loadSample(0);
+  });
 
 // Load and start the WebAssembly module, then enable evaluation.
 const go = new Go();
 WebAssembly.instantiateStreaming(fetch("eval.wasm"), go.importObject)
   .then((res) => {
     go.run(res.instance);
-    loadSample("sample1");
     resultEl.textContent = "Ready. Press Evaluate.";
     evaluateBtn.disabled = false;
   })

@@ -1,6 +1,6 @@
 module github.com/juliaogris/teleport-expressions
 
-go 1.24
+go 1.25
 
 require (
 	github.com/gravitational/trace v1.5.4
