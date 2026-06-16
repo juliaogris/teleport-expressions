@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teleport app-access rule evaluator</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+  <p class="back"><a href="../">&larr; All evaluators</a></p>
+  <h1>Teleport app-access rule evaluator</h1>
+  <p class="lede">
+    Evaluate a Teleport app-access resource rule against an HTTP request and a
+    caller identity. A rule matches a path, optionally a method, and an identity
+    condition over the segments its captures bind. Runs entirely in your browser
+    via WebAssembly.
+  </p>
+
+  <div class="field">
+    <label for="rule">
+      Rule <span class="hint">(YAML: paths, methods, where, or a bare pred)</span>
+    </label>
+    <textarea id="rule" spellcheck="false"></textarea>
+  </div>
+
+  <div class="field">
+    <label for="input">
+      Input <span class="hint">(YAML: request, identity)</span>
+    </label>
+    <textarea id="input" spellcheck="false"></textarea>
+  </div>
+
+  <div class="row">
+    <button id="evaluate" class="primary" disabled>Evaluate</button>
+    <span class="samples">
+      <span>Samples:</span>
+      <button id="sample1" type="button">Capture + trait</button>
+      <button id="sample2" type="button">Bare predicate</button>
+    </span>
+  </div>
+
+  <div id="result" aria-live="polite">Loading WebAssembly module&hellip;</div>
+
+  <footer>
+    Rule compiler, path matcher, and predicate engine copied from the Teleport
+    branch <code>julia/app/policy-matcher-sketch</code>
+    (<code>lib/srv/app/resourcematcher</code>).
+  </footer>
+</main>
+
+<script src="wasm_exec.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

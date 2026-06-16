@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teleport label expression evaluator</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+  <p class="back"><a href="../">&larr; All evaluators</a></p>
+  <h1>Teleport label expression evaluator</h1>
+  <p class="lede">
+    Evaluate a Teleport label expression against a resource's labels, a
+    username, and user traits. Runs entirely in your browser via WebAssembly.
+  </p>
+
+  <div class="field">
+    <label for="expr">Label expression</label>
+    <textarea id="expr" spellcheck="false"></textarea>
+  </div>
+
+  <div class="field">
+    <label for="input">
+      Input <span class="hint">(YAML: labels, username, traits)</span>
+    </label>
+    <textarea id="input" spellcheck="false"></textarea>
+  </div>
+
+  <div class="row">
+    <button id="evaluate" class="primary" disabled>Evaluate</button>
+    <span class="samples">
+      <span>Samples:</span>
+      <button id="sample1" type="button">Prod owner</button>
+      <button id="sample2" type="button">Email + regexp</button>
+    </span>
+  </div>
+
+  <div id="result" aria-live="polite">Loading WebAssembly module&hellip;</div>
+
+  <footer>
+    Parser specification copied from Teleport
+    <code>lib/services/label_expressions.go</code> at tag v18.8.3.
+  </footer>
+</main>
+
+<script src="wasm_exec.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
