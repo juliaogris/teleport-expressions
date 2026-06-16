@@ -68,5 +68,30 @@
     "name": "14. Anti-pattern (commented out)",
     "rule": "app_resources:\n  - paths:\n      - \"/api/v4/projects/{project}/**\"\n      # - \"/api/status\"   # Invalid: {project} must be bound for every path\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
     "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
+  },
+  {
+    "name": "15. URL decoding: strict default rejects %2F",
+    "rule": "app_resources:\n  # Default url_decoding: no decode, and any percent byte is rejected.\n  - paths: [\"/files/**\"]",
+    "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
+  },
+  {
+    "name": "16. URL decoding: one pass admits %2F",
+    "rule": "app_resources:\n  - paths: [\"/files/*/*\"]\n    url_decoding:\n      decode_iterations: 1",
+    "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
+  },
+  {
+    "name": "17. URL decoding: one pass rejects %252F",
+    "rule": "app_resources:\n  # One pass leaves a residual % in a double-encoded path, so it is rejected.\n  - paths: [\"/files/*/*\"]\n    url_decoding:\n      decode_iterations: 1",
+    "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
+  },
+  {
+    "name": "18. URL decoding: two passes admit %252F",
+    "rule": "app_resources:\n  - paths: [\"/files/*/*\"]\n    url_decoding:\n      decode_iterations: 2",
+    "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
+  },
+  {
+    "name": "19. URL decoding: allow_percent keeps literal %",
+    "rule": "app_resources:\n  # allow_percent admits a residual %, so a%2Fb stays one segment.\n  - paths: [\"/files/*\"]\n    url_decoding:\n      allow_percent: true",
+    "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
   }
 ]

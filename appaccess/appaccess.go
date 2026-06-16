@@ -92,7 +92,13 @@ func Desugar(resourcesYAML string) (string, error) {
 		if err != nil {
 			return "", trace.Wrap(err, "desugaring rule %d", i)
 		}
-		out.AppResources = append(out.AppResources, rm.Rule{Where: formatPredicate(pred)})
+		out.AppResources = append(out.AppResources, rm.Rule{
+			Where: formatPredicate(pred),
+			// Carry the path-decoding config onto the desugared rule, so the
+			// bare predicate form decodes the path the same way the
+			// declarative form did and the two surfaces stay equivalent.
+			URLDecoding: r.URLDecoding,
+		})
 	}
 
 	marshalled, err := yaml.Marshal(out)
