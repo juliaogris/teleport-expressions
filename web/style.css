@@ -156,7 +156,13 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); }
   /* Give the sample picker the full row width so the select does not get
      squashed between the prev and next buttons. */
   .samples { flex: 1 1 100%; }
-  .samples select { flex: 1 1 auto; min-width: 0; }
+  /* Drop the fixed widths on mobile so each select fills its row. */
+  #topic-select,
+  #sample-select {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 button {
   border: 1px solid var(--border);
@@ -201,7 +207,13 @@ button:disabled { opacity: 0.5; cursor: default; }
   padding: 0.5rem 0.6rem;
   font-size: 0.9rem;
   cursor: pointer;
+  /* Fixed widths so the controls do not jump as the selected option's text
+     changes length. A long option is truncated when closed and shown in full
+     in the open list. */
+  flex: none;
 }
+#topic-select { width: 11rem; }
+#sample-select { width: 18rem; }
 /* Keep Evaluate at the right edge of the controls row. */
 .controls #evaluate { margin-left: auto; }
 .samples select:focus { outline: none; border-color: var(--accent); }

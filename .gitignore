@@ -1,4 +1,5 @@
 /bin/
+HANDOFF.md
 web/labels/eval.wasm
 web/app-access/eval.wasm
 web/labels/wasm_exec.js

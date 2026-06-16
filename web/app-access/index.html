@@ -21,10 +21,14 @@
 
   <div class="row controls">
     <span class="samples">
-      <label for="sample-select">Sample:</label>
-      <button id="prev" type="button" title="Previous sample">&larr;</button>
+      <label for="topic-select">Topic:</label>
+      <select id="topic-select"></select>
+    </span>
+    <span class="samples">
+      <label for="sample-select">Example:</label>
+      <button id="prev" type="button" title="Previous example">&larr;</button>
       <select id="sample-select"></select>
-      <button id="next" type="button" title="Next sample">&rarr;</button>
+      <button id="next" type="button" title="Next example">&rarr;</button>
     </span>
     <label class="toggle"><input type="checkbox" id="sugared" checked> sugared</label>
     <button id="evaluate" class="primary" title="Evaluate (⌘/Ctrl + Enter)" disabled>Evaluate</button>

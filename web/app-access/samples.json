@@ -1,117 +1,157 @@
 [
   {
-    "name": "1. Exact path",
-    "rule": "app_resources:\n  - paths: [\"/api/v4/health\"]",
-    "input": "request:\n  method: GET\n  path: /api/v4/health\nidentity:\n  name: bob"
+    "topic": "path",
+    "examples": [
+      {
+        "name": "exact",
+        "rule": "app_resources:\n  - paths: [\"/api/v4/health\"]",
+        "input": "request:\n  method: GET\n  path: /api/v4/health\nidentity:\n  name: bob"
+      },
+      {
+        "name": "multiple exact",
+        "rule": "app_resources:\n  - paths:\n      - \"/api/v4/health\"\n      - \"/api/v4/status\"",
+        "input": "request:\n  method: GET\n  path: /api/v4/status\nidentity:\n  name: bob"
+      },
+      {
+        "name": "nested literal chain",
+        "rule": "app_resources:\n  # literal() splits its text on \"/\".\n  # This nested chain is the same matcher\n  # as literal(\"api/v4/buildinfo\").\n  - where: |-\n      path.match(\n        literal(\n          \"api\",\n          literal(\n            \"v4\",\n            literal(\n              \"buildinfo\"))))",
+        "input": "request:\n  method: GET\n  path: /api/v4/buildinfo\nidentity:\n  name: bob"
+      }
+    ]
   },
   {
-    "name": "2. Multiple exact paths",
-    "rule": "app_resources:\n  - paths:\n      - \"/api/v4/health\"\n      - \"/api/v4/status\"",
-    "input": "request:\n  method: GET\n  path: /api/v4/status\nidentity:\n  name: bob"
+    "topic": "method",
+    "examples": [
+      {
+        "name": "single method",
+        "rule": "app_resources:\n  - paths: [\"/api/**\"]\n    methods: [GET]",
+        "input": "request:\n  method: GET\n  path: /api/users\nidentity:\n  name: bob"
+      },
+      {
+        "name": "multiple methods",
+        "rule": "app_resources:\n  - paths: [\"/api/**\"]\n    methods: [GET, HEAD]",
+        "input": "request:\n  method: HEAD\n  path: /api/users\nidentity:\n  name: bob"
+      },
+      {
+        "name": "wrong method denied",
+        "rule": "app_resources:\n  - paths: [\"/api/**\"]\n    methods: [GET]",
+        "input": "request:\n  method: POST\n  path: /api/users\nidentity:\n  name: bob"
+      }
+    ]
   },
   {
-    "name": "3. Greedy glob",
-    "rule": "app_resources:\n  - paths: [\"/api/v4/**\"]",
-    "input": "request:\n  method: GET\n  path: /api/v4/users/123\nidentity:\n  name: bob"
+    "topic": "globs",
+    "examples": [
+      {
+        "name": "single segment *",
+        "rule": "app_resources:\n  - paths: [\"/api/*/health\"]",
+        "input": "request:\n  method: GET\n  path: /api/v4/health\nidentity:\n  name: bob"
+      },
+      {
+        "name": "greedy **",
+        "rule": "app_resources:\n  - paths: [\"/api/v4/**\"]",
+        "input": "request:\n  method: GET\n  path: /api/v4/users/123\nidentity:\n  name: bob"
+      }
+    ]
   },
   {
-    "name": "4. Glob + capture + contains",
-    "rule": "app_resources:\n  - paths: [\"/data/*/{letter}/**\"]\n    where: contains(set(\"a\", \"b\", \"c\"), vars.letter)",
-    "input": "request:\n  method: GET\n  path: /data/x/b/info\nidentity:\n  name: bob"
+    "topic": "capture",
+    "examples": [
+      {
+        "name": "checked against a set",
+        "rule": "app_resources:\n  - paths: [\"/data/*/{letter}/**\"]\n    where: contains(set(\"a\", \"b\", \"c\"), vars.letter)",
+        "input": "request:\n  method: GET\n  path: /data/x/b/info\nidentity:\n  name: bob"
+      },
+      {
+        "name": "checked against a trait",
+        "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    methods: [GET]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
+        "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
+      },
+      {
+        "name": "equals identity",
+        "rule": "app_resources:\n  - paths: [\"/api/v4/user/{username}\"]\n    where: user.name == vars.username",
+        "input": "request:\n  method: GET\n  path: /api/v4/user/alice\nidentity:\n  name: alice"
+      }
+    ]
   },
   {
-    "name": "5. Method",
-    "rule": "app_resources:\n  - paths: [\"/api/**\"]\n    methods: [GET]",
-    "input": "request:\n  method: GET\n  path: /api/users\nidentity:\n  name: bob"
+    "topic": "combination",
+    "examples": [
+      {
+        "name": "role required",
+        "rule": "app_resources:\n  - paths: [\"/admin/**\"]\n    where: contains(user.roles, \"admin\")",
+        "input": "request:\n  method: DELETE\n  path: /admin/settings\nidentity:\n  name: bob\n  roles: [admin]"
+      },
+      {
+        "name": "carve-out (negation)",
+        "rule": "app_resources:\n  - where: |-\n      path.match(greedy()) &&\n      !path.match(literal(\"admin\", greedy()))",
+        "input": "request:\n  method: GET\n  path: /api/users\nidentity:\n  name: bob"
+      },
+      {
+        "name": "additive list (two rules)",
+        "rule": "app_resources:\n  - paths: [\"/public/**\"]\n  - paths: [\"/static/**\"]",
+        "input": "request:\n  method: GET\n  path: /static/css/app.css\nidentity:\n  name: bob"
+      },
+      {
+        "name": "anti-pattern (commented out)",
+        "rule": "app_resources:\n  - paths:\n      - \"/api/v4/projects/{project}/**\"\n      # - \"/api/status\"\n      #   {project} not bound for this path\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
+        "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
+      }
+    ]
   },
   {
-    "name": "6. Methods",
-    "rule": "app_resources:\n  - paths: [\"/api/**\"]\n    methods: [GET, HEAD]",
-    "input": "request:\n  method: HEAD\n  path: /api/users\nidentity:\n  name: bob"
+    "topic": "url decoding",
+    "examples": [
+      {
+        "name": "strict default rejects %2F",
+        "rule": "app_resources:\n  # url_decoding normalizes the path first.\n  # Default: no decode, reject every % byte\n  # (%2F, %2E, %3B). Safest; loosen below.\n  - paths: [\"/files/**\"]",
+        "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
+      },
+      {
+        "name": "one pass admits %2F",
+        "rule": "app_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
+        "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
+      },
+      {
+        "name": "one pass rejects %252F",
+        "rule": "app_resources:\n  # One pass leaves a residual % in a\n  # double-encoded path, so it is rejected.\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
+        "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
+      },
+      {
+        "name": "two passes admit %252F",
+        "rule": "app_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 2",
+        "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
+      },
+      {
+        "name": "allow_percent keeps literal %",
+        "rule": "app_resources:\n  # allow_percent admits a residual %,\n  # so a%2Fb stays one segment.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      allow_percent: true",
+        "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
+      },
+      {
+        "name": "decode then allow residual %",
+        "rule": "app_resources:\n  # decode_iterations and allow_percent\n  # combine: decode once, then admit any\n  # leftover %.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      decode_iterations: 1\n      allow_percent: true",
+        "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
+      }
+    ]
   },
   {
-    "name": "7. Capture checked against trait",
-    "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    methods: [GET]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
-    "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
-  },
-  {
-    "name": "8. Capture equals identity",
-    "rule": "app_resources:\n  - paths: [\"/api/v4/user/{username}\"]\n    where: user.name == vars.username",
-    "input": "request:\n  method: GET\n  path: /api/v4/user/alice\nidentity:\n  name: alice"
-  },
-  {
-    "name": "9. Role required",
-    "rule": "app_resources:\n  - paths: [\"/admin/**\"]\n    where: contains(user.roles, \"admin\")",
-    "input": "request:\n  method: DELETE\n  path: /admin/settings\nidentity:\n  name: bob\n  roles: [admin]"
-  },
-  {
-    "name": "10. Carve-out (negation)",
-    "rule": "app_resources:\n  - where: |-\n      path.match(greedy()) &&\n      !path.match(literal(\"admin\", greedy()))",
-    "input": "request:\n  method: GET\n  path: /api/users\nidentity:\n  name: bob"
-  },
-  {
-    "name": "11. Literal chain, nested form",
-    "rule": "app_resources:\n  # literal() splits its text on \"/\".\n  # This nested chain is the same matcher\n  # as literal(\"api/v4/buildinfo\").\n  - where: |-\n      path.match(\n        literal(\n          \"api\",\n          literal(\n            \"v4\",\n            literal(\n              \"buildinfo\"))))",
-    "input": "request:\n  method: GET\n  path: /api/v4/buildinfo\nidentity:\n  name: bob"
-  },
-  {
-    "name": "12. Additive list (two rules)",
-    "rule": "app_resources:\n  - paths: [\"/public/**\"]\n  - paths: [\"/static/**\"]",
-    "input": "request:\n  method: GET\n  path: /static/css/app.css\nidentity:\n  name: bob"
-  },
-  {
-    "name": "13. Denied: wrong method",
-    "rule": "app_resources:\n  - paths: [\"/api/**\"]\n    methods: [GET]",
-    "input": "request:\n  method: POST\n  path: /api/users\nidentity:\n  name: bob"
-  },
-  {
-    "name": "14. Anti-pattern (commented out)",
-    "rule": "app_resources:\n  - paths:\n      - \"/api/v4/projects/{project}/**\"\n      # - \"/api/status\"   # Invalid: {project} must be bound for every path\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
-    "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
-  },
-  {
-    "name": "15. URL decoding: strict default rejects %2F",
-    "rule": "app_resources:\n  # url_decoding normalizes the path first.\n  # Default: no decode, reject every % byte\n  # (%2F, %2E, %3B). Safest; loosen below.\n  - paths: [\"/files/**\"]",
-    "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
-  },
-  {
-    "name": "16. URL decoding: one pass admits %2F",
-    "rule": "app_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
-    "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
-  },
-  {
-    "name": "17. URL decoding: one pass rejects %252F",
-    "rule": "app_resources:\n  # One pass leaves a residual % in a double-encoded path, so it is rejected.\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
-    "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
-  },
-  {
-    "name": "18. URL decoding: two passes admit %252F",
-    "rule": "app_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 2",
-    "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
-  },
-  {
-    "name": "19. URL decoding: allow_percent keeps literal %",
-    "rule": "app_resources:\n  # allow_percent admits a residual %, so a%2Fb stays one segment.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      allow_percent: true",
-    "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
-  },
-  {
-    "name": "20. URL decoding: decode then allow residual %",
-    "rule": "app_resources:\n  # decode_iterations and allow_percent\n  # combine: decode once, then admit any\n  # leftover %.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      decode_iterations: 1\n      allow_percent: true",
-    "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
-  },
-  {
-    "name": "21. Allow code and reason",
-    "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: \"User has access to project\"\n    deny_hint:\n      - deny_code: denied_project\n        deny_reason: \"User has NO access to project\"",
-    "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
-  },
-  {
-    "name": "22. Deny hint: path matched, where failed",
-    "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: \"User has access to project\"\n    deny_hint:\n      # No on: defaults to the path and method clause, so this hint fires\n      # when the path matched but the where failed.\n      - deny_code: denied_project\n        deny_reason: \"User has NO access to project\"",
-    "input": "request:\n  method: GET\n  path: /api/v4/projects/gamma/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
-  },
-  {
-    "name": "23. Deny hints across rules, only some fire",
-    "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    deny_hint:\n      - deny_code: denied_project\n        deny_reason: \"Not allowed on this project\"\n  - paths: [\"/api/v4/admin/**\"]\n    where: contains(user.roles, \"admin\")\n    deny_hint:\n      - deny_code: denied_admin\n        deny_reason: \"Admin role required\"",
-    "input": "request:\n  method: GET\n  path: /api/v4/projects/gamma/issues\nidentity:\n  name: bob\n  traits:\n    allowed_projects: [alpha]"
+    "topic": "allow / deny codes",
+    "examples": [
+      {
+        "name": "allow code and reason",
+        "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: \"User has access to project\"\n    deny_hint:\n      - deny_code: denied_project\n        deny_reason: \"User has NO access to project\"",
+        "input": "request:\n  method: GET\n  path: /api/v4/projects/alpha/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
+      },
+      {
+        "name": "deny hint: path matched, where failed",
+        "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: \"User has access to project\"\n    deny_hint:\n      # No on: defaults to the path+method\n      # clause. Fires when the path matched\n      # but the where failed.\n      - deny_code: denied_project\n        deny_reason: \"User has NO access to project\"",
+        "input": "request:\n  method: GET\n  path: /api/v4/projects/gamma/issues\nidentity:\n  name: alice\n  traits:\n    allowed_projects: [alpha, beta]"
+      },
+      {
+        "name": "deny hints across rules, only some fire",
+        "rule": "app_resources:\n  - paths: [\"/api/v4/projects/{project}/**\"]\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    deny_hint:\n      - deny_code: denied_project\n        deny_reason: \"Not allowed on this project\"\n  - paths: [\"/api/v4/admin/**\"]\n    where: contains(user.roles, \"admin\")\n    deny_hint:\n      - deny_code: denied_admin\n        deny_reason: \"Admin role required\"",
+        "input": "request:\n  method: GET\n  path: /api/v4/projects/gamma/issues\nidentity:\n  name: bob\n  traits:\n    allowed_projects: [alpha]"
+      }
+    ]
   }
 ]

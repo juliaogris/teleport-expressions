@@ -4,20 +4,45 @@ const ruleEl = document.getElementById("rule");
 const inputEl = document.getElementById("input");
 const resultEl = document.getElementById("result");
 const evaluateBtn = document.getElementById("evaluate");
+const topicSelect = document.getElementById("topic-select");
 const sampleSelect = document.getElementById("sample-select");
 const sugaredCheck = document.getElementById("sugared");
 
 const ruleEditor = CodeEditor.makeEditor(ruleEl, "yaml");
 const inputEditor = CodeEditor.makeEditor(inputEl, "yaml");
 
-let samples = [];
+// topics is a two-level tree: each topic groups a list of examples, and the two
+// dropdowns select a topic and then an example within it.
+let topics = [];
 
-// loadCurrent loads the selected sample into the fields, honoring the sugared
+function topicIndex() {
+  return parseInt(topicSelect.value, 10) || 0;
+}
+
+function currentExamples() {
+  const topic = topics[topicIndex()];
+  return topic ? topic.examples : [];
+}
+
+// populateExamples fills the example dropdown with the chosen topic's examples.
+function populateExamples(t) {
+  sampleSelect.innerHTML = "";
+  const topic = topics[t];
+  if (!topic) return;
+  topic.examples.forEach((ex, i) => {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = ex.name;
+    sampleSelect.appendChild(opt);
+  });
+}
+
+// loadCurrent loads the selected example into the fields, honoring the sugared
 // checkbox. When sugared is unchecked, it asks the WebAssembly module to lower
 // the rules to their bare predicate form. The samples are authored sugared, so
 // the desugared form is always computed, never hand-written.
 function loadCurrent() {
-  const s = samples[sampleSelect.value];
+  const s = currentExamples()[sampleSelect.value];
   if (!s) return;
   let ruleText = s.rule;
   if (!sugaredCheck.checked && typeof desugarAppResources === "function") {
@@ -35,7 +60,7 @@ function loadCurrent() {
 }
 
 // resetResult clears any prior verdict back to the idle prompt, so switching
-// samples does not leave a stale result on screen. It runs only once the module
+// examples does not leave a stale result on screen. It runs only once the module
 // is ready, to avoid overwriting the loading message.
 function resetResult() {
   if (evaluateBtn.disabled) return;
@@ -43,23 +68,29 @@ function resetResult() {
   resultEl.textContent = "Ready. Press Evaluate.";
 }
 
-// writeHash records the selected sample and sugared state in the URL hash, so a
+// writeHash records the topic, example, and sugared state in the URL hash, so a
 // view can be linked or bookmarked. It uses replaceState, so stepping through
-// samples does not pile up browser history entries.
+// examples does not pile up browser history entries.
 function writeHash() {
   const p = new URLSearchParams();
-  p.set("sample", sampleSelect.value);
+  p.set("topic", topicSelect.value);
+  p.set("example", sampleSelect.value);
   p.set("sugared", sugaredCheck.checked ? "1" : "0");
   history.replaceState(null, "", "#" + p.toString());
 }
 
-// applyHash restores the sample and sugared state from the URL hash when it is
-// present and valid. It runs on load and on hashchange.
+// applyHash restores the topic, example, and sugared state from the URL hash
+// when it is present and valid. It runs on load and on hashchange.
 function applyHash() {
   const p = new URLSearchParams(location.hash.slice(1));
-  const idx = parseInt(p.get("sample"), 10);
-  if (!Number.isNaN(idx) && idx >= 0 && idx < samples.length) {
-    sampleSelect.value = String(idx);
+  const t = parseInt(p.get("topic"), 10);
+  if (!Number.isNaN(t) && t >= 0 && t < topics.length) {
+    topicSelect.value = String(t);
+  }
+  populateExamples(topicIndex());
+  const e = parseInt(p.get("example"), 10);
+  if (!Number.isNaN(e) && e >= 0 && e < currentExamples().length) {
+    sampleSelect.value = String(e);
   }
   const sugared = p.get("sugared");
   if (sugared === "0") sugaredCheck.checked = false;
@@ -127,14 +158,31 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;");
 }
 
+// step moves by delta within the current topic. Past the last example it wraps
+// to the first example of the next topic, and before the first it wraps to the
+// last example of the previous topic, so prev/next walk the whole tree.
 function step(delta) {
-  const n = samples.length;
-  if (!n) return;
-  const i = ((parseInt(sampleSelect.value, 10) || 0) + delta + n) % n;
-  sampleSelect.value = String(i);
+  if (topics.length === 0) return;
+  let t = topicIndex();
+  let e = (parseInt(sampleSelect.value, 10) || 0) + delta;
+  if (e >= topics[t].examples.length) {
+    t = (t + 1) % topics.length;
+    e = 0;
+  } else if (e < 0) {
+    t = (t - 1 + topics.length) % topics.length;
+    e = topics[t].examples.length - 1;
+  }
+  topicSelect.value = String(t);
+  populateExamples(t);
+  sampleSelect.value = String(e);
   loadCurrent();
 }
 
+topicSelect.addEventListener("change", () => {
+  populateExamples(topicIndex());
+  sampleSelect.value = "0";
+  loadCurrent();
+});
 sampleSelect.addEventListener("change", loadCurrent);
 sugaredCheck.addEventListener("change", loadCurrent);
 document.getElementById("prev").addEventListener("click", () => step(-1));
@@ -142,7 +190,7 @@ document.getElementById("next").addEventListener("click", () => step(1));
 evaluateBtn.addEventListener("click", render);
 
 // Cmd/Ctrl+Enter evaluates from anywhere, including while typing in a field.
-// Left and right arrows step through the samples, but only when no field is
+// Left and right arrows step through the examples, but only when no field is
 // focused, so they do not fight cursor movement while editing.
 document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !evaluateBtn.disabled) {
@@ -162,24 +210,24 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Restore and track sample state in the URL hash, including across back and
-// forward navigation.
+// Restore and track state in the URL hash, including across back and forward
+// navigation.
 window.addEventListener("hashchange", () => {
   applyHash();
   loadCurrent();
 });
 
-// Load the samples, populate the dropdown, and show the first one.
+// Load the topics, populate the dropdowns, and show the first example.
 fetch("samples.json")
   .then((r) => r.json())
   .then((data) => {
-    samples = data;
-    sampleSelect.innerHTML = "";
-    samples.forEach((s, i) => {
+    topics = data;
+    topicSelect.innerHTML = "";
+    topics.forEach((t, i) => {
       const opt = document.createElement("option");
       opt.value = String(i);
-      opt.textContent = s.name;
-      sampleSelect.appendChild(opt);
+      opt.textContent = t.topic;
+      topicSelect.appendChild(opt);
     });
     applyHash();
     loadCurrent();
