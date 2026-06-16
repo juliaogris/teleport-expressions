@@ -18,7 +18,17 @@ function loadSample(index) {
   inputEl.value = s.input;
   exprEditor.update();
   inputEditor.update();
+  resetResult();
   writeHash();
+}
+
+// resetResult clears any prior verdict back to the idle prompt, so switching
+// samples does not leave a stale result on screen. It runs only once the module
+// is ready, to avoid overwriting the loading message.
+function resetResult() {
+  if (evaluateBtn.disabled) return;
+  resultEl.className = "idle";
+  resultEl.textContent = "Ready. Press Evaluate.";
 }
 
 // writeHash records the selected sample in the URL hash, so a view can be

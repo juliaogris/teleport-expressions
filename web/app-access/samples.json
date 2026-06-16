@@ -51,7 +51,7 @@
   },
   {
     "name": "11. Literal chain, nested form",
-    "rule": "app_resources:\n  # literal() splits its text on \"/\", so this nested chain is the same\n  # matcher as the contracted literal(\"api/v4/buildinfo\").\n  - where: |-\n      path.match(\n        literal(\n          \"api\",\n          literal(\n            \"v4\",\n            literal(\n              \"buildinfo\"))))",
+    "rule": "app_resources:\n  # literal() splits its text on \"/\".\n  # This nested chain is the same matcher\n  # as literal(\"api/v4/buildinfo\").\n  - where: |-\n      path.match(\n        literal(\n          \"api\",\n          literal(\n            \"v4\",\n            literal(\n              \"buildinfo\"))))",
     "input": "request:\n  method: GET\n  path: /api/v4/buildinfo\nidentity:\n  name: bob"
   },
   {
@@ -71,27 +71,27 @@
   },
   {
     "name": "15. URL decoding: strict default rejects %2F",
-    "rule": "app_resources:\n  # url_decoding controls how the request path is normalized before matching.\n  # The default decodes nothing and rejects any percent-encoded byte, so an\n  # encoded slash (%2F), dot (%2E), or semicolon (%3B) is refused outright.\n  # This is the safest default: the matcher sees exactly the bytes the upstream\n  # receives, so an attacker cannot smuggle a separator past a rule by encoding\n  # it. Loosen it only with decode_iterations and allow_percent, as below.\n  - paths: [\"/files/**\"]",
+    "rule": "app_resources:\n  # url_decoding normalizes the path first.\n  # Default: no decode, reject every % byte\n  # (%2F, %2E, %3B). Safest; loosen below.\n  - paths: [\"/files/**\"]",
     "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
   },
   {
     "name": "16. URL decoding: one pass admits %2F",
-    "rule": "app_resources:\n  - paths: [\"/files/*/*\"]\n    url_decoding:\n      decode_iterations: 1",
+    "rule": "app_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
     "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
   },
   {
     "name": "17. URL decoding: one pass rejects %252F",
-    "rule": "app_resources:\n  # One pass leaves a residual % in a double-encoded path, so it is rejected.\n  - paths: [\"/files/*/*\"]\n    url_decoding:\n      decode_iterations: 1",
+    "rule": "app_resources:\n  # One pass leaves a residual % in a double-encoded path, so it is rejected.\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
     "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
   },
   {
     "name": "18. URL decoding: two passes admit %252F",
-    "rule": "app_resources:\n  - paths: [\"/files/*/*\"]\n    url_decoding:\n      decode_iterations: 2",
+    "rule": "app_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 2",
     "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob"
   },
   {
     "name": "19. URL decoding: allow_percent keeps literal %",
-    "rule": "app_resources:\n  # allow_percent admits a residual %, so a%2Fb stays one segment.\n  - paths: [\"/files/*\"]\n    url_decoding:\n      allow_percent: true",
+    "rule": "app_resources:\n  # allow_percent admits a residual %, so a%2Fb stays one segment.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      allow_percent: true",
     "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob"
   }
 ]
