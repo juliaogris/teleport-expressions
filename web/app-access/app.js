@@ -32,6 +32,9 @@ let topics = [];
 // is the snippet's name, defaulting to "untitled".
 let sharedMode = false;
 let sharedName = "";
+// sharedSnippet holds the shared rule, input, and the sugared state the rule
+// was captured in, so the sugared toggle can re-derive the rule in shared mode.
+let sharedSnippet = null;
 
 function topicIndex() {
   return parseInt(topicSelect.value, 10) || 0;
@@ -132,6 +135,10 @@ function isModified(ex) {
 // the rules to their bare predicate form. The samples are authored sugared, so
 // the desugared form is always computed, never hand-written.
 function loadCurrent() {
+  if (sharedMode) {
+    applySharedRule();
+    return;
+  }
   const s = currentExamples()[sampleSelect.value];
   if (!s) return;
   let ruleText = s.rule;
@@ -208,17 +215,43 @@ function applyHashAndLoad() {
 function enterSharedMode(snip) {
   sharedMode = true;
   sharedName = snip.name ? snip.name : "untitled";
+  sharedSnippet = {
+    rule: snip.rule || "",
+    input: snip.input || "",
+    sugared: !!snip.sugared,
+  };
   buildTopicOptions();
   prependOption(topicSelect, "shared", "shared");
   topicSelect.value = "shared";
   populateExamples(0);
   prependOption(sampleSelect, "shared", sharedName);
   sampleSelect.value = "shared";
-  ruleEl.value = snip.rule || "";
-  inputEl.value = snip.input || "";
-  sugaredCheck.checked = !!snip.sugared;
-  ruleEditor.update();
+  sugaredCheck.checked = sharedSnippet.sugared;
+  inputEl.value = sharedSnippet.input;
   inputEditor.update();
+  applySharedRule();
+}
+
+// applySharedRule sets the rule editor to the shared snippet's rule in the form
+// the sugared toggle asks for. The snippet stores its rule in
+// sharedSnippet.sugared form, so the bare form is derived by desugaring on
+// demand when the sugared source is held. Re-sugaring is not possible, so a
+// snippet shared in desugared form stays desugared. The input is left as the
+// snippet's, so toggling sugared does not disturb an edited input.
+function applySharedRule() {
+  let ruleText = sharedSnippet.rule;
+  if (
+    !sugaredCheck.checked &&
+    sharedSnippet.sugared &&
+    typeof desugarAppResources === "function"
+  ) {
+    const out = desugarAppResources(sharedSnippet.rule);
+    if (out && !out.error) {
+      ruleText = out.yaml;
+    }
+  }
+  ruleEl.value = ruleText;
+  ruleEditor.update();
   resetResult();
 }
 
