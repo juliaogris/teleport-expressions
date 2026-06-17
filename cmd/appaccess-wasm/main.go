@@ -75,6 +75,7 @@ func evaluate(this js.Value, args []js.Value) any {
 		"vars":        vars,
 		"allowCode":   res.AllowCode,
 		"allowReason": res.AllowReason,
+		"denyKind":    res.DenyKind,
 		"denyHints":   denyHints,
 	}
 }

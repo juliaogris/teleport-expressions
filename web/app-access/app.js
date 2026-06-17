@@ -350,6 +350,9 @@ function renderNow() {
       text += "\nallow_reason: " + escapeHtml(out.allowReason);
     }
   }
+  if (!out.allowed && out.denyKind) {
+    text += "\ndeny_kind: " + escapeHtml(out.denyKind);
+  }
   const hints = out.denyHints || [];
   if (!out.allowed && hints.length > 0) {
     text += "\ndeny_hints:";

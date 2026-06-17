@@ -39,13 +39,15 @@ type resourcesDoc struct {
 
 // Result is the outcome of evaluating the rules. Vars holds the path segments
 // the matching rule's captures bound, and is nil on a deny. On an allow it
-// carries the matching rule's allow code and reason; on a deny it carries every
-// deny hint that fired across the rules.
+// carries the matching rule's allow code and reason; on a deny it carries the
+// deny kind, the structured reason for the deny, and every deny hint that fired
+// across the rules.
 type Result struct {
 	Allowed     bool
 	Vars        map[string]string
 	AllowCode   string
 	AllowReason string
+	DenyKind    string
 	DenyHints   []DeniedHint
 }
 
@@ -72,6 +74,9 @@ func Evaluate(resourcesYAML string, in Input) (Result, error) {
 		return Result{}, trace.Wrap(err, "compiling app_resources")
 	}
 
+	// The demo supplies app_resources directly rather than gathering it from
+	// roles, so the identity's roles stand in for the roles that carried the
+	// rules. EvaluatedRoles rides the decision for audit, and is not surfaced.
 	decision, err := set.Evaluate(
 		rm.Request{Method: in.Request.Method, Path: in.Request.Path},
 		rm.Identity{
@@ -79,21 +84,26 @@ func Evaluate(resourcesYAML string, in Input) (Result, error) {
 			Roles:  in.Identity.Roles,
 			Traits: in.Identity.Traits,
 		},
+		in.Identity.Roles,
 	)
 	if err != nil {
 		return Result{}, trace.Wrap(err, "evaluating app_resources")
 	}
-	hints := make([]DeniedHint, 0, len(decision.DenyHints))
-	for _, h := range decision.DenyHints {
-		hints = append(hints, DeniedHint{DenyCode: h.DenyCode, DenyReason: h.DenyReason})
+	res := Result{Allowed: decision.Allowed}
+	if decision.Allow != nil {
+		res.Vars = decision.Allow.Vars
+		res.AllowCode = decision.Allow.Code
+		res.AllowReason = decision.Allow.Reason
 	}
-	return Result{
-		Allowed:     decision.Allowed,
-		Vars:        decision.Vars,
-		AllowCode:   decision.AllowCode,
-		AllowReason: decision.AllowReason,
-		DenyHints:   hints,
-	}, nil
+	if decision.Deny != nil {
+		res.DenyKind = string(decision.Deny.Kind)
+		hints := make([]DeniedHint, 0, len(decision.Deny.Hints))
+		for _, h := range decision.Deny.Hints {
+			hints = append(hints, DeniedHint{DenyCode: h.Code, DenyReason: h.Reason})
+		}
+		res.DenyHints = hints
+	}
+	return res, nil
 }
 
 // Desugar lowers every rule in an app_resources list to a single where
