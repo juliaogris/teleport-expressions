@@ -336,10 +336,10 @@ function renderNow() {
     '">' +
     (out.allowed ? "allowed: true" : "allowed: false") +
     "</span>";
+  // Always show the evaluated roles, including the empty list, so a deny that
+  // gathered no role from the user's roles reads as a default deny.
   const roles = (out.evaluatedRoles || []).filter((r) => r);
-  if (roles.length > 0) {
-    text += "\nevaluated_roles: [" + roles.map(escapeHtml).join(", ") + "]";
-  }
+  text += "\nevaluated_roles: [" + roles.map(escapeHtml).join(", ") + "]";
   const vars = out.vars || {};
   const keys = Object.keys(vars);
   if (out.allowed && keys.length > 0) {
