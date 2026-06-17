@@ -8,6 +8,11 @@
         "input": "request:\n  method: GET\n  path: /api/v4/health\nidentity:\n  name: bob"
       },
       {
+        "name": "trailing slash",
+        "rule": "app_resources:\n  # A trailing slash is significant: this\n  # matches /api/v4/health/ but not\n  # /api/v4/health.\n  - paths: [\"/api/v4/health/\"]",
+        "input": "request:\n  method: GET\n  path: /api/v4/health/\nidentity:\n  name: bob"
+      },
+      {
         "name": "multiple exact",
         "rule": "app_resources:\n  - paths:\n      - \"/api/v4/health\"\n      - \"/api/v4/status\"",
         "input": "request:\n  method: GET\n  path: /api/v4/status\nidentity:\n  name: bob"
