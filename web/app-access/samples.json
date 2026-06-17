@@ -13,6 +13,11 @@
         "input": "request:\n  method: GET\n  path: /api/v4/health/\nidentity:\n  name: bob"
       },
       {
+        "name": "bare root",
+        "rule": "app_resources:\n  # The bare root matches only the\n  # request \"/\".\n  - paths: [\"/\"]",
+        "input": "request:\n  method: GET\n  path: /\nidentity:\n  name: bob"
+      },
+      {
         "name": "multiple exact",
         "rule": "app_resources:\n  - paths:\n      - \"/api/v4/health\"\n      - \"/api/v4/status\"",
         "input": "request:\n  method: GET\n  path: /api/v4/status\nidentity:\n  name: bob"
