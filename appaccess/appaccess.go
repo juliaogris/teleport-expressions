@@ -77,6 +77,17 @@ func Evaluate(resourcesYAML string, in Input) (Result, error) {
 		return Result{}, fmt.Errorf("parsing app_resources YAML: %w", err)
 	}
 
+	// app_resources never stand alone: a role carries them under
+	// spec.allow.app_resources, and a request is evaluated against the roles
+	// the user holds. Require both halves so the model stays honest, rather
+	// than evaluating a nameless role for a user with no roles.
+	if doc.RoleName == "" {
+		return Result{}, trace.BadParameter("role_name is required: name the role that carries these app_resources")
+	}
+	if len(in.Identity.Roles) == 0 {
+		return Result{}, trace.BadParameter("identity.roles is required: list the roles the user holds")
+	}
+
 	// The demo models a single role: role_name names it and app_resources are
 	// its rules. CompileRoles builds the union and remembers the role name, so
 	// the decision reports it as an evaluated role without a separate list.

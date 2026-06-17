@@ -34,6 +34,7 @@ func mustInput(t *testing.T, raw string) appaccess.Input {
 
 func TestEvaluate(t *testing.T) {
 	const captureRule = `
+role_name: tester
 app_resources:
   - paths: ["/api/v4/projects/{project}/**"]
     methods: [GET]
@@ -45,6 +46,7 @@ request:
   path: /api/v4/projects/alpha/issues
 identity:
   name: alice
+  roles: [tester]
   traits:
     allowed_projects: [alpha, beta]
 `)
@@ -73,6 +75,7 @@ request:
   path: /api/v4/projects/forbidden/issues
 identity:
   name: alice
+  roles: [tester]
   traits:
     allowed_projects: [alpha, beta]
 `),
@@ -87,6 +90,7 @@ request:
   path: /api/v4/projects/alpha/issues
 identity:
   name: alice
+  roles: [tester]
   traits:
     allowed_projects: [alpha]
 `),
@@ -94,13 +98,14 @@ identity:
 		},
 		{
 			name: "where holds the whole predicate",
-			rule: "app_resources:\n  - where: path.match(greedy())",
+			rule: "role_name: tester\napp_resources:\n  - where: path.match(greedy())",
 			in:   allowedInput,
 			want: true,
 		},
 		{
 			name: "additive: second rule in the list matches",
 			rule: `
+role_name: tester
 app_resources:
   - paths: ["/admin/**"]
   - paths: ["/api/v4/projects/{project}/**"]
@@ -113,15 +118,35 @@ app_resources:
 		},
 		{
 			name:    "both surfaces is a compile error",
-			rule:    "app_resources:\n  - paths: [/api/**]\n    pred: path.match(greedy())",
+			rule:    "role_name: tester\napp_resources:\n  - paths: [/api/**]\n    pred: path.match(greedy())",
 			in:      allowedInput,
 			wantErr: true,
 		},
 		{
 			name: "empty list denies",
-			rule: "app_resources: []",
+			rule: "role_name: tester\napp_resources: []",
 			in:   allowedInput,
 			want: false,
+		},
+		{
+			name:    "missing role_name errors",
+			rule:    "app_resources:\n  - paths: [\"/api/**\"]",
+			in:      allowedInput,
+			wantErr: true,
+		},
+		{
+			name: "missing identity roles errors",
+			rule: captureRule,
+			in: mustInput(t, `
+request:
+  method: GET
+  path: /api/v4/projects/alpha/issues
+identity:
+  name: alice
+  traits:
+    allowed_projects: [alpha, beta]
+`),
+			wantErr: true,
 		},
 	}
 
