@@ -94,7 +94,7 @@
       },
       {
         "name": "carve-out (negation)",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(greedy()) &&\n      !path.match(literal(\"admin\", greedy()))",
+        "rule": "role_name: developer\napp_resources:\n  # Quote a where that starts with \"!\"\n  # so YAML does not read it as a tag.\n  - paths: [\"/**\"]\n    where: '!path.match(literal(\"admin\", greedy()))'",
         "input": "request:\n  method: GET\n  path: /api/users\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
