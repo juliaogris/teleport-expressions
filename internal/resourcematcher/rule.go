@@ -105,11 +105,11 @@ const (
 	DenyInvalidRequest DenyKind = "teleport_invalid_request"
 )
 
-// Decision is the outcome of evaluating a rule or rule set against a request.
-// Allowed is the verdict; exactly one of AllowDetails or DenyDetails carries
-// the matching detail, so allow-only and deny-only fields cannot be read on the
-// wrong outcome. EvaluatedRoles rides both, since the audit event emits it
-// either way.
+// Decision is the outcome of evaluating a rule or role set against a request.
+// Allowed is the verdict; exactly one of Allow or Deny carries the matching
+// detail, so allow-only and deny-only fields cannot be read on the wrong
+// outcome. EvaluatedRoles rides both, since the audit event emits it either
+// way.
 type Decision struct {
 	// Allowed reports whether any rule matched.
 	Allowed bool
@@ -122,7 +122,7 @@ type Decision struct {
 	// EvaluatedRoles lists the roles that carried app_resources for the app, in
 	// the order they were evaluated. An empty list on a deny marks a
 	// misconfigured default-deny, where no role granted any app_resources, as
-	// opposed to a request that a granting role did not match. The RuleSet
+	// opposed to a request that a granting role did not match. The RoleSet
 	// derives this from the roles it was built from.
 	EvaluatedRoles []string
 }
@@ -208,7 +208,7 @@ func (r Rule) Compile() (*CompiledRule, error) {
 	// they agree. A carve-out's negated path.match must decode the subject the
 	// same way as the positive match, or an over-encoded path can slip past the
 	// negation while the positive match still admits it. The single agreed
-	// config also serves the pre-rule tokenize check in RuleSet.Evaluate.
+	// config also serves the pre-rule tokenize check in RoleSet.Evaluate.
 	decode, err := extractDecodeConfig(expr)
 	if err != nil {
 		return nil, trace.Wrap(err)
@@ -596,12 +596,12 @@ type Role struct {
 	Rules []Rule
 }
 
-// RuleSet is the additive-OR union of the app_resources a caller holds, built
+// RoleSet is the additive-OR union of the app_resources a caller holds, built
 // from one or more roles. A request is allowed if any rule in any role matches.
 // The set remembers its role names, so a decision reports the evaluated roles
 // without a caller-supplied list, the way iterating a services.RoleSet reveals
 // which role granted access.
-type RuleSet []compiledRole
+type RoleSet []compiledRole
 
 // compiledRole is one role's compiled rules.
 type compiledRole struct {
@@ -609,9 +609,9 @@ type compiledRole struct {
 	rules []*CompiledRule
 }
 
-// CompileRoles compiles the roles a caller holds into a RuleSet.
-func CompileRoles(roles []Role) (RuleSet, error) {
-	set := make(RuleSet, 0, len(roles))
+// CompileRoles compiles the roles a caller holds into a RoleSet.
+func CompileRoles(roles []Role) (RoleSet, error) {
+	set := make(RoleSet, 0, len(roles))
 	for _, role := range roles {
 		cr := compiledRole{name: role.Name, rules: make([]*CompiledRule, 0, len(role.Rules))}
 		for i, r := range role.Rules {
@@ -629,7 +629,7 @@ func CompileRoles(roles []Role) (RuleSet, error) {
 // EvaluatedRoles returns the names of the roles in the set, the roles that
 // carried app_resources for the app. An empty result marks the misconfigured
 // default-deny, where no role granted any app_resources.
-func (s RuleSet) EvaluatedRoles() []string {
+func (s RoleSet) EvaluatedRoles() []string {
 	names := make([]string, 0, len(s))
 	for _, role := range s {
 		names = append(names, role.name)
@@ -652,7 +652,7 @@ func (s RuleSet) EvaluatedRoles() []string {
 // a rule's url_decoding admit an encoded path the strict default would reject,
 // while a genuinely malformed path, such as an illegal byte or a "." or ".."
 // segment, still fails under every rule and stays invalid.
-func (s RuleSet) Evaluate(request Request, identity Identity) (Decision, error) {
+func (s RoleSet) Evaluate(request Request, identity Identity) (Decision, error) {
 	roles := s.EvaluatedRoles()
 	if hasRules, ok := s.canTokenize(request.Path); hasRules && !ok {
 		return Decision{
@@ -686,7 +686,7 @@ func (s RuleSet) Evaluate(request Request, identity Identity) (Decision, error) 
 // tokenize is malformed under every decode policy the set offers; an empty set
 // has no rules and is a misconfigured default-deny rather than an invalid
 // request.
-func (s RuleSet) canTokenize(path string) (hasRules, ok bool) {
+func (s RoleSet) canTokenize(path string) (hasRules, ok bool) {
 	for _, role := range s {
 		for _, rule := range role.rules {
 			hasRules = true
