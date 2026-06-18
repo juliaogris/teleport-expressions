@@ -129,6 +129,25 @@ app_resources:
 			want: false,
 		},
 		{
+			// A rule's url_decoding governs the set-level invalid-request
+			// floor: %2F decodes to a separator under one pass, so the path
+			// splits into three segments and matches with x bound to the
+			// first. The strict default floor would have rejected the percent
+			// byte before the rule's decode ran.
+			name: "rule url_decoding admits an encoded path",
+			rule: "role_name: tester\napp_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
+			in: mustInput(t, `
+request:
+  method: GET
+  path: /files/a%2Fb
+identity:
+  name: alice
+  roles: [tester]
+`),
+			want:     true,
+			wantVars: map[string]string{"x": "a"},
+		},
+		{
 			name: "user lacks the role denies",
 			rule: captureRule,
 			in: mustInput(t, `
