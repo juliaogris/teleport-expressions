@@ -149,8 +149,8 @@
       },
       {
         "name": "greedy_except: exact segment, subtree still allowed",
-        "rule": "role_name: developer\napp_resources:\n  # The excluded matcher's terminal-ness sets\n  # the scope. literal(\"readme\") has no child,\n  # so only the exact /files/readme is denied;\n  # /files/readme/anything stays allowed.\n  - where: 'path.match(literal(\"files\", greedy_except(literal(\"readme\"))))'",
-        "input": "request:\n  method: GET\n  path: /files/readme/notes\nidentity:\n  name: bob\n  roles: [developer]"
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_except(literal(\"secret\"))))",
+        "input": "request:\n  method: GET\n  path: /files/secret/notes\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
         "name": "greedy_except: add greedy() to exclude the whole subtree",
