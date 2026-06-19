@@ -134,7 +134,7 @@
       },
       {
         "name": "greedy_without: encoded path can't slip the deny",
-        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")),\n      decode_iterations(1))\n    url_decoding:\n      decode_iterations: 1",
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")),\n      decode_iterations(1))",
         "input": "request:\n  method: GET\n  path: /files/%73ecret/key\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
