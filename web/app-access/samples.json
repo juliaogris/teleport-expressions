@@ -234,7 +234,7 @@
       },
       {
         "name": "decode in the predicate, no YAML",
-        "rule": "role_name: developer\napp_resources:\n  # The bare predicate carries decode in\n  # the call itself: decode_iterations(1).\n  # No url_decoding YAML, so the rule is\n  # self-contained and ports to code.\n  - pred: path.match(literal(\"files\", capture(\"x\", glob())), decode_iterations(1))",
+        "rule": "role_name: developer\napp_resources:\n  # A bare predicate passes the url_decoding\n  # options as call arguments, not YAML.\n  - pred: |\n      path.match(literal(\"files\",\n          capture(\"x\", glob())),\n      decode_iterations(1))",
         "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
