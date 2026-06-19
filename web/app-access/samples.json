@@ -185,6 +185,26 @@
     ]
   },
   {
+    "topic": "trailing slash",
+    "examples": [
+      {
+        "name": "optional_slash: match with or without a trailing slash",
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          optional_slash()))",
+        "input": "request:\n  method: GET\n  path: /files/\nidentity:\n  name: bob\n  roles: [developer]"
+      },
+      {
+        "name": "slash: a trailing slash is required",
+        "rule": "role_name: developer\napp_resources:\n  - where: 'path.match(literal(\"files\", slash()))'",
+        "input": "request:\n  method: GET\n  path: /files\nidentity:\n  name: bob\n  roles: [developer]"
+      },
+      {
+        "name": "slash: the bare root path /",
+        "rule": "role_name: developer\napp_resources:\n  - where: 'path.match(slash())'",
+        "input": "request:\n  method: GET\n  path: /\nidentity:\n  name: bob\n  roles: [developer]"
+      }
+    ]
+  },
+  {
     "topic": "url decoding",
     "examples": [
       {
