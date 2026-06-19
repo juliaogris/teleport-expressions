@@ -124,7 +124,7 @@
     "examples": [
       {
         "name": "greedy_without: exclude subtrees (string sugar)",
-        "rule": "role_name: developer\napp_resources:\n  # Allow every path under /files, then\n  # carve out the secret and private\n  # subtrees. One positive path.match, no\n  # negation: the rule keeps a single\n  # decode policy and fails closed.\n  - where: |\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")))",
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")))",
         "input": "request:\n  method: GET\n  path: /files/reports/q3\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
@@ -139,7 +139,7 @@
       },
       {
         "name": "glob_without: exclude single segments",
-        "rule": "role_name: developer\napp_resources:\n  # Allow exactly one segment under /files\n  # that is neither private nor secret. The\n  # excluded set is a list of strings, so it\n  # is written with set(...).\n  - where: |\n      path.match(literal(\"files\",\n          glob_without(set(\"private\", \"secret\"))))",
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          glob_without(set(\"private\", \"secret\"))))",
         "input": "request:\n  method: GET\n  path: /files/report\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
@@ -154,12 +154,12 @@
       },
       {
         "name": "greedy_except: add greedy() to exclude the whole subtree",
-        "rule": "role_name: developer\napp_resources:\n  # literal(\"secret\", greedy()) is terminal\n  # deeper, so the entire /files/secret/**\n  # subtree is carved out.\n  - where: |\n      path.match(literal(\"files\",\n          greedy_except(literal(\"secret\", greedy()))))",
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_except(literal(\"secret\", greedy()))))",
         "input": "request:\n  method: GET\n  path: /files/secret/key\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
         "name": "greedy_except: a capture inside is a load error",
-        "rule": "role_name: developer\napp_resources:\n  # A capture inside greedy_except is not\n  # allowed, so the rule is rejected at load.\n  - where: |\n      path.match(literal(\"files\",\n          greedy_except(capture(\"name\"))))",
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_except(capture(\"name\"))))",
         "input": "request:\n  method: GET\n  path: /files/anything\nidentity:\n  name: bob\n  roles: [developer]"
       }
     ]
