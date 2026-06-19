@@ -134,7 +134,7 @@
       },
       {
         "name": "greedy_without: encoded path can't slip the deny",
-        "rule": "role_name: developer\napp_resources:\n  # Inclusion and exclusion walk the same\n  # decoded stream, so %73ecret decodes to\n  # secret and is still carved out. The old\n  # negated path.match needed a matching\n  # decode_iterations or it failed open.\n  - where: 'path.match(literal(\"files\", greedy_without(\"secret\", \"private\")), decode_iterations(1))'\n    url_decoding:\n      decode_iterations: 1",
+        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")),\n      decode_iterations(1))\n    url_decoding:\n      decode_iterations: 1",
         "input": "request:\n  method: GET\n  path: /files/%73ecret/key\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
