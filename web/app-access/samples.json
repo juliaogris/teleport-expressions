@@ -209,7 +209,7 @@
     "examples": [
       {
         "name": "strict default rejects %2F",
-        "rule": "role_name: developer\napp_resources:\n  # url_decoding normalizes the path. Default:\n  # no decode, reject every % byte.\n  - paths: [\"/files/**\"]",
+        "rule": "role_name: developer\napp_resources:\n  # url_decoding options normalize the path.\n  # Default: no decode, reject every % byte.\n  - paths: [\"/files/**\"]",
         "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
