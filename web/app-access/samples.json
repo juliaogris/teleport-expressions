@@ -219,7 +219,7 @@
       },
       {
         "name": "one pass rejects %252F",
-        "rule": "role_name: developer\napp_resources:\n  # One pass leaves a residual % in a\n  # double-encoded path, so it is rejected.\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
+        "rule": "role_name: developer\napp_resources:\n  # One pass leaves a residual % in a\n  # double-encoded path, so it is rejected.\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1 # change to 2",
         "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
