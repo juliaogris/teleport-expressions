@@ -1,9 +1,11 @@
 description: 'greedy_without: an encoded path can''t slip the deny'
 rules:
-    # greedy_without grants files/** but denies the secret and private subtrees.
-    # An attempt to reach secret with an encoded "s" (%73) cannot slip the deny:
-    # the strict tokenizer rejects the non-separator escape outright, so the
-    # request is invalid before greedy_without is even consulted.
+    # greedy_without grants files/** but
+    # denies the secret and private
+    # subtrees. Reaching secret with an
+    # encoded "s" (%73) can't slip it: the
+    # tokenizer rejects the escape, so the
+    # path is invalid before the rule runs.
     - where: |-
         path.match(literal("files",
             greedy_without("secret", "private")))

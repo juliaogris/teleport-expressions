@@ -3,14 +3,15 @@ WASM_EXEC := $(shell $(GO) env GOROOT)/lib/wasm/wasm_exec.js
 PRETTIER ?= npx --yes prettier@3.6.2
 WEB_GLOB := 'web/**/*.{js,html,json}'
 
-.PHONY: all build wasm test serve clean fmt-web lint-web goldens
+.PHONY: all build wasm test serve clean fmt-web lint-web samples
 
 all: build wasm
 
-# Regenerate web/app-access/goldens.json from the resourcematcher golden
-# testdata, so the worked examples that pin the engine are browsable in the
-# playground alongside the hand-curated samples.json.
-goldens:
+# Regenerate web/app-access/samples.json from the resourcematcher golden
+# testdata (one example per file, the first case) merged with the hand-curated
+# web/app-access/overlay.json. The testdata is the single source of truth, so
+# every generated example is one the golden tests verify.
+samples:
 	$(GO) run ./cmd/gengoldens
 
 # Build the command-line evaluator into ./bin/eval.

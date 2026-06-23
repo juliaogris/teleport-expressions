@@ -1,0 +1,37 @@
+[
+  {
+    "topic": "tour",
+    "examples": [
+      {
+        "from": "01_path/exact.yaml",
+        "name": "1. an exact path"
+      },
+      {
+        "from": "03_globs/single_segment.yaml",
+        "name": "2. a wildcard segment (*)"
+      },
+      {
+        "from": "03_globs/greedy.yaml",
+        "name": "3. everything below (**)"
+      },
+      {
+        "from": "04_capture/checked_against_a_trait.yaml",
+        "name": "4. capture a segment, check a trait"
+      },
+      {
+        "from": "09_encoded_slash/capstone_encoded_id_and_a_carve_out.yaml",
+        "name": "5. the whole model in one tree"
+      }
+    ]
+  },
+  {
+    "topic": "roles",
+    "examples": [
+      {
+        "name": "no matching role",
+        "rule": "role_name: developer\n# The user must hold this role for\n# its app_resources to apply.\napp_resources:\n  - paths: [\"/api/v4/health\"]",
+        "input": "request:\n  method: GET\n  path: /api/v4/health\nidentity:\n  name: bob\n  roles: [auditor]"
+      }
+    ]
+  }
+]

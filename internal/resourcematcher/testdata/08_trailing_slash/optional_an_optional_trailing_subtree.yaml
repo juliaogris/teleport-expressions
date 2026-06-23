@@ -1,0 +1,41 @@
+description: 'optional: an optional trailing subtree'
+rules:
+    # The path may end at files, or carry
+    # the optional reports tail, from one
+    # tree with no duplicated prefix.
+    - where: |-
+        path.match(literal("files",
+            optional(literal("reports"))))
+rules_desugared:
+    - pred: |-
+        path.match(
+          literal("files",
+            optional(
+              literal("reports"))))
+identity:
+    name: bob
+    roles:
+        - developer
+cases:
+    - request:
+        method: GET
+        path: /files
+      expect:
+        allowed: true
+    - request:
+        method: GET
+        path: /files/reports
+      expect:
+        allowed: true
+    - request:
+        method: GET
+        path: /files/other
+      expect:
+        allowed: false
+        deny_kind: teleport_request_not_allowed
+    - request:
+        method: GET
+        path: /files/reports/q3
+      expect:
+        allowed: false
+        deny_kind: teleport_request_not_allowed
