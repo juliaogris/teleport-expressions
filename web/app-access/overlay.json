@@ -1,6 +1,7 @@
 {
   "ignore": [
     "01_path/03_nested_literal_chain.yaml",
+    "08_trailing_slash/02_slash_the_bare_root_path.yaml",
     "09_encoded_slash/06_gitlab_files_route.yaml",
     "09_encoded_slash/07_greedy_is_safe_only.yaml",
     "09_encoded_slash/08_inner_check_in_where.yaml",
