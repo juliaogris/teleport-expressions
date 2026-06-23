@@ -1,37 +1,44 @@
-[
-  {
-    "topic": "tour",
-    "examples": [
-      {
-        "from": "01_path/exact.yaml",
-        "name": "1. an exact path"
-      },
-      {
-        "from": "03_globs/single_segment.yaml",
-        "name": "2. a wildcard segment (*)"
-      },
-      {
-        "from": "03_globs/greedy.yaml",
-        "name": "3. everything below (**)"
-      },
-      {
-        "from": "04_capture/checked_against_a_trait.yaml",
-        "name": "4. capture a segment, check a trait"
-      },
-      {
-        "from": "09_encoded_slash/capstone_encoded_id_and_a_carve_out.yaml",
-        "name": "5. the whole model in one tree"
-      }
-    ]
-  },
-  {
-    "topic": "roles",
-    "examples": [
-      {
-        "name": "no matching role",
-        "rule": "role_name: developer\n# The user must hold this role for\n# its app_resources to apply.\napp_resources:\n  - paths: [\"/api/v4/health\"]",
-        "input": "request:\n  method: GET\n  path: /api/v4/health\nidentity:\n  name: bob\n  roles: [auditor]"
-      }
-    ]
-  }
-]
+{
+  "ignore": [
+    "01_path/03_nested_literal_chain.yaml",
+    "09_encoded_slash/06_gitlab_files_route.yaml",
+    "09_encoded_slash/07_greedy_is_safe_only.yaml",
+    "09_encoded_slash/08_inner_check_in_where.yaml",
+    "05_combination/05_carve_out_that_decodes_too.yaml",
+    "06_carve_outs/05_greedy_except_a_capture_inside_is_a_load_error.yaml"
+  ],
+  "topics": [
+    {
+      "topic": "tour",
+      "examples": [
+        { "from": "01_path/01_exact.yaml", "name": "1. an exact path" },
+        {
+          "from": "03_globs/01_single_segment.yaml",
+          "name": "2. a wildcard segment (*)"
+        },
+        {
+          "from": "03_globs/02_greedy.yaml",
+          "name": "3. everything below (**)"
+        },
+        {
+          "from": "04_capture/02_checked_against_a_trait.yaml",
+          "name": "4. capture a segment, check a trait"
+        },
+        {
+          "from": "09_encoded_slash/05_capstone_encoded_id_and_a_carve_out.yaml",
+          "name": "5. the whole model in one tree"
+        }
+      ]
+    },
+    {
+      "topic": "roles",
+      "examples": [
+        {
+          "name": "no matching role",
+          "rule": "role_name: developer\n# The user must hold this role for\n# its app_resources to apply.\napp_resources:\n  - paths: [\"/api/v4/health\"]",
+          "input": "request:\n  method: GET\n  path: /api/v4/health\nidentity:\n  name: bob\n  roles: [auditor]"
+        }
+      ]
+    }
+  ]
+}

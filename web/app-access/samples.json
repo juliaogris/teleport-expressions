@@ -24,7 +24,7 @@
       },
       {
         "name": "5. the whole model in one tree",
-        "rule": "role_name: developer\napp_resources:\n  # The whole model in one tree.\n  # capture_encoded binds the project id\n  # raw, plain or encoded. Its child\n  # greedy_except admits the rest but\n  # carves out a \"secret\" subtree.\n  # allow_encoded opts in the slash.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"),\n              greedy_except(literal(\"secret\", greedy())))),\n      allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/9/secret/key\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"),\n              greedy_except(literal(\"secret\", greedy())))),\n      allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -32,11 +32,6 @@
   {
     "topic": "path",
     "examples": [
-      {
-        "name": "bare root",
-        "rule": "role_name: developer\napp_resources:\n  # The bare root matches only the\n  # request \"/\".\n  - paths:\n      - /",
-        "input": "request:\n    method: GET\n    path: /\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
       {
         "name": "exact",
         "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/health",
@@ -46,16 +41,6 @@
         "name": "multiple exact",
         "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/health\n      - /api/v4/status",
         "input": "request:\n    method: GET\n    path: /api/v4/status\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "nested literal chain",
-        "rule": "role_name: developer\napp_resources:\n  # literal() splits its text on \"/\".\n  # This nested chain is the same matcher\n  # as literal(\"api/v4/buildinfo\").\n  - where: |-\n      path.match(\n        literal(\n          \"api\",\n          literal(\n            \"v4\",\n            literal(\n              \"buildinfo\"))))",
-        "input": "request:\n    method: GET\n    path: /api/v4/buildinfo\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "trailing slash",
-        "rule": "role_name: developer\napp_resources:\n  # A trailing slash is significant: this\n  # matches /api/v4/health/ but not\n  # /api/v4/health.\n  - paths:\n      - /api/v4/health/",
-        "input": "request:\n    method: GET\n    path: /api/v4/health/\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
@@ -63,14 +48,14 @@
     "topic": "globs",
     "examples": [
       {
-        "name": "greedy **",
-        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/**",
-        "input": "request:\n    method: GET\n    path: /api/v4/users/123\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
         "name": "single segment *",
         "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/*/health",
         "input": "request:\n    method: GET\n    path: /api/v4/health\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
+        "name": "greedy **",
+        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/**",
+        "input": "request:\n    method: GET\n    path: /api/v4/users/123\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
@@ -113,16 +98,6 @@
     "topic": "trailing slash",
     "examples": [
       {
-        "name": "optional: an optional trailing subtree",
-        "rule": "role_name: developer\napp_resources:\n  # The path may end at files, or carry\n  # the optional reports tail, from one\n  # tree with no duplicated prefix.\n  - where: |-\n      path.match(literal(\"files\",\n          optional(literal(\"reports\"))))",
-        "input": "request:\n    method: GET\n    path: /files\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "optional: match with or without a trailing slash",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          optional(slash())))",
-        "input": "request:\n    method: GET\n    path: /files/\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
         "name": "slash: a trailing slash is required",
         "rule": "role_name: developer\napp_resources:\n  - where: path.match(literal(\"files\", slash()))",
         "input": "request:\n    method: GET\n    path: /files\nidentity:\n    name: bob\n    roles:\n        - developer"
@@ -131,6 +106,16 @@
         "name": "slash: the bare root path /",
         "rule": "role_name: developer\napp_resources:\n  - where: path.match(slash())",
         "input": "request:\n    method: GET\n    path: /\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
+        "name": "optional: match with or without a trailing slash",
+        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          optional(slash())))",
+        "input": "request:\n    method: GET\n    path: /files/\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
+        "name": "optional: an optional trailing subtree",
+        "rule": "role_name: developer\napp_resources:\n  # The path may end at files, or carry\n  # the optional reports tail, from one\n  # tree with no duplicated prefix.\n  - where: |-\n      path.match(literal(\"files\",\n          optional(literal(\"reports\"))))",
+        "input": "request:\n    method: GET\n    path: /files\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
@@ -138,34 +123,24 @@
     "topic": "combination",
     "examples": [
       {
-        "name": "additive list (two rules)",
-        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /public/**\n  - paths:\n      - /static/**",
-        "input": "request:\n    method: GET\n    path: /static/css/app.css\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "anti-pattern (commented out)",
-        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n      # - /api/status\n      #   {project} not bound for this path\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
-        "input": "request:\n    method: GET\n    path: /api/v4/projects/alpha/issues\nidentity:\n    name: alice\n    roles:\n        - developer\n    traits:\n        allowed_projects:\n            - alpha\n            - beta"
-      },
-      {
-        "name": "carve-out (negation)",
-        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /**\n    where: '!path.match(literal(\"admin\", greedy()))'",
-        "input": "request:\n    method: GET\n    path: /api/users\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "carve-out and the strict tokenizer",
-        "rule": "role_name: developer\napp_resources:\n  # A negated carve-out denies\n  # files/secret. Reaching it with an\n  # encoded \"s\" (%73) never decodes: the\n  # tokenizer rejects the escape, so the\n  # path is invalid before the rule runs.\n  - where: |-\n      !path.match(literal(\"files\",\n          literal(\"secret\", greedy())))",
-        "input": "request:\n    method: GET\n    path: /files/%73ecret/key\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
         "name": "path, method, and trait",
         "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /teams/{team}/**\n    methods:\n      - GET\n    where: contains(user.traits[\"teams\"], vars.team)",
         "input": "request:\n    method: GET\n    path: /teams/security/dashboards\nidentity:\n    name: alice\n    roles:\n        - developer\n    traits:\n        teams:\n            - security\n            - devs"
       },
       {
+        "name": "additive list (two rules)",
+        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /public/**\n  - paths:\n      - /static/**",
+        "input": "request:\n    method: GET\n    path: /static/css/app.css\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
         "name": "sugared carve-out (paths + where)",
         "rule": "role_name: developer\napp_resources:\n  # Allow all of /files, then carve out the\n  # /files/secret subtree with a negated\n  # path.match in where. paths set the\n  # territory, where removes a slice.\n  - paths:\n      - /files/**\n    where: |-\n      !path.match(literal(\"files\",\n          literal(\"secret\", greedy())))",
         "input": "request:\n    method: GET\n    path: /files/a\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
+        "name": "anti-pattern (commented out)",
+        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n      # - /api/status\n      #   {project} not bound for this path\n    where: contains(user.traits[\"allowed_projects\"], vars.project)",
+        "input": "request:\n    method: GET\n    path: /api/v4/projects/alpha/issues\nidentity:\n    name: alice\n    roles:\n        - developer\n    traits:\n        allowed_projects:\n            - alpha\n            - beta"
       }
     ]
   },
@@ -174,23 +149,13 @@
     "examples": [
       {
         "name": "glob_without: exclude single segments",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          glob_without(set(\"private\", \"secret\"))))",
+        "rule": "role_name: developer\napp_resources:\n  # allows /files/report\n  # denies /files/a/b and /files/secret\n  - where: |-\n      path.match(literal(\"files\",\n          glob_without(set(\"private\", \"secret\"))))",
         "input": "request:\n    method: GET\n    path: /files/report\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
-        "name": "glob_without: one segment only, deeper is denied",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          glob_without(set(\"private\", \"secret\"))))",
-        "input": "request:\n    method: GET\n    path: /files/a/b\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "greedy_except: a capture inside is a load error",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          greedy_except(capture(\"name\"))))",
-        "input": ""
-      },
-      {
-        "name": "greedy_except: add greedy() to exclude the whole subtree",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          greedy_except(literal(\"secret\", greedy()))))",
-        "input": "request:\n    method: GET\n    path: /files/secret/key\nidentity:\n    name: bob\n    roles:\n        - developer"
+        "name": "greedy_without: exclude and carve out subtrees",
+        "rule": "role_name: developer\napp_resources:\n  # allows /files/reports/q3\n  # denies /files/secret/key\n  - where: |-\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")))",
+        "input": "request:\n    method: GET\n    path: /files/reports/q3\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "greedy_except: exact segment, subtree still allowed",
@@ -198,18 +163,8 @@
         "input": "request:\n    method: GET\n    path: /files/secret/notes\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
-        "name": "greedy_without: an encoded path can't slip the deny",
-        "rule": "role_name: developer\napp_resources:\n  # greedy_without grants files/** but\n  # denies the secret and private\n  # subtrees. Reaching secret with an\n  # encoded \"s\" (%73) can't slip it: the\n  # tokenizer rejects the escape, so the\n  # path is invalid before the rule runs.\n  - where: |-\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")))",
-        "input": "request:\n    method: GET\n    path: /files/%73ecret/key\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "greedy_without: exclude subtrees (string sugar)",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")))",
-        "input": "request:\n    method: GET\n    path: /files/reports/q3\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "greedy_without: the carved subtree is denied",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")))",
+        "name": "greedy_except: add greedy() to exclude the whole subtree",
+        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          greedy_except(literal(\"secret\", greedy()))))",
         "input": "request:\n    method: GET\n    path: /files/secret/key\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -217,6 +172,11 @@
   {
     "topic": "root paths",
     "examples": [
+      {
+        "name": "root: several first segments in one tree",
+        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(root(\n          literal(\"api\", greedy()),\n          literal(\"admin\", greedy())))",
+        "input": "request:\n    method: GET\n    path: /admin/settings\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
       {
         "name": "root: a path under no root is denied",
         "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(root(\n          literal(\"api\", greedy()),\n          literal(\"admin\", greedy())))",
@@ -226,11 +186,6 @@
         "name": "root: nested anywhere but the top is a load error",
         "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(literal(\"files\",\n          root(literal(\"a\"), literal(\"b\"))))",
         "input": ""
-      },
-      {
-        "name": "root: several first segments in one tree",
-        "rule": "role_name: developer\napp_resources:\n  - where: |-\n      path.match(root(\n          literal(\"api\", greedy()),\n          literal(\"admin\", greedy())))",
-        "input": "request:\n    method: GET\n    path: /admin/settings\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
@@ -238,43 +193,18 @@
     "topic": "encoded slash",
     "examples": [
       {
-        "name": "an encoded id, a carved-out subtree, and the encoded-slash opt-in",
-        "rule": "role_name: developer\napp_resources:\n  # The whole model in one tree.\n  # capture_encoded binds the project id\n  # raw, plain or encoded. Its child\n  # greedy_except admits the rest but\n  # carves out a \"secret\" subtree.\n  # allow_encoded opts in the slash.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"),\n              greedy_except(literal(\"secret\", greedy())))),\n      allow_encoded(set(\"/\")))",
-        "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "a double-encoded slash is invalid, even under an encoded-slash node",
-        "rule": "role_name: developer\napp_resources:\n  # capture_encoded admits the encoded\n  # separator, but a double-encoded slash\n  # (%252F) begins with %25, not the\n  # separator, so the tokenizer rejects\n  # the whole path before any matcher.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"), greedy())), allow_encoded(set(\"/\")))",
-        "input": "request:\n    method: GET\n    path: /api/v4/projects/a%252Fb/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "encoded_literal pins one group/project by its decoded value",
-        "rule": "role_name: developer\napp_resources:\n  # encoded_literal pins one id by its\n  # decoded value, in either hex case\n  # (%2F or %2f). The \"/\" is content, so\n  # the node stays one segment.\n  # allow_encoded opts in the slash.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          encoded_literal(\"mygroup/myproject\", set(\"/\"),\n              literal(\"issues\"))), allow_encoded(set(\"/\")))",
-        "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
         "name": "an encoded node without allow_encoded fails closed",
         "rule": "role_name: developer\napp_resources:\n  # capture_encoded names an encoded\n  # position, but the match admits no\n  # encoding until allow_encoded opts it\n  # in. Without it an encoded path fails\n  # closed; a plain segment still matches.\n  - pred: |-\n      path.match(literal(\"registry\",\n          capture_encoded(\"package\", set(\"/\"))))",
         "input": "request:\n    method: GET\n    path: /registry/@babel%2fcore\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
-        "name": "GitLab files route, encoded id and encoded file path",
-        "rule": "role_name: developer\napp_resources:\n  # The files API takes an encoded id and\n  # an encoded file path. Each encoded\n  # position is named, and binds raw and\n  # forwards byte-faithful. allow_encoded\n  # opts in the slash.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"),\n              literal(\"repository/files\",\n                  capture_encoded(\"file\", set(\"/\"))))), allow_encoded(set(\"/\")))",
-        "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/repository/files/lib%2Fsrv%2Fapp.go\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
         "name": "GitLab project id, plain or encoded, in one node",
-        "rule": "role_name: developer\napp_resources:\n  # A GitLab project id is a numeric id\n  # (123) or a URL-encoded group/project.\n  # capture_encoded binds both forms as\n  # one raw segment, no OR-doubling.\n  # allow_encoded opts in the slash.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"), greedy())), allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources:\n  # allows /api/v4/projects/g%2fp/issues\n  # rejects /api/v4/projects/a%252Fb\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"), greedy())), allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/123/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
-        "name": "a broad ** never spans an encoded slash",
-        "rule": "role_name: developer\napp_resources:\n  # greedy is safe-only: it spans only\n  # segments with no encoding. /files/**\n  # matches a plain tail but stops at an\n  # encoded slash, so it never admits one.\n  # The path is valid, it just matches no\n  # rule.\n  - paths:\n      - /files/**",
-        "input": "request:\n    method: GET\n    path: /files/a/b/c\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "constrain an encoded id with a where check on the raw value",
-        "rule": "role_name: developer\napp_resources:\n  # An encoded segment is an opaque blob:\n  # the matcher can't reach inside it. An\n  # inner constraint goes in a where check\n  # on the raw captured value, not the\n  # path tree.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"), greedy())), allow_encoded(set(\"/\"))) \u0026\u0026\n      vars.project == \"mygroup%2Fmyproject\"",
+        "name": "encoded_literal pins one group/project by its decoded value",
+        "rule": "role_name: developer\napp_resources:\n  # encoded_literal pins one id by its\n  # decoded value, in either hex case\n  # (%2F or %2f). The \"/\" is content, so\n  # the node stays one segment.\n  # allow_encoded opts in the slash.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          encoded_literal(\"mygroup/myproject\", set(\"/\"),\n              literal(\"issues\"))), allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
@@ -283,9 +213,9 @@
         "input": "request:\n    method: GET\n    path: /registry/@babel%2fcore\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
-        "name": "a \"..\" smuggled between encoded slashes is rejected",
-        "rule": "role_name: developer\napp_resources:\n  # The decode-for-validation view turns\n  # a%2F..%2Fadmin into a/../admin, so the\n  # \"..\" is caught like a raw one. The\n  # path is invalid before any matcher.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"), greedy())), allow_encoded(set(\"/\")))",
-        "input": "request:\n    method: GET\n    path: /api/v4/projects/a%2F..%2Fadmin/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
+        "name": "an encoded id, a carved-out subtree, and the encoded-slash opt-in",
+        "rule": "role_name: developer\napp_resources:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/9/secret/key\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"),\n              greedy_except(literal(\"secret\", greedy())))),\n      allow_encoded(set(\"/\")))",
+        "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },

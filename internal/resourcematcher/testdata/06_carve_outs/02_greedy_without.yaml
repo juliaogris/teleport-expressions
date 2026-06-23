@@ -1,11 +1,7 @@
-description: 'greedy_without: an encoded path can''t slip the deny'
+description: 'greedy_without: exclude and carve out subtrees'
 rules:
-    # greedy_without grants files/** but
-    # denies the secret and private
-    # subtrees. Reaching secret with an
-    # encoded "s" (%73) can't slip it: the
-    # tokenizer rejects the escape, so the
-    # path is invalid before the rule runs.
+    # allows /files/reports/q3
+    # denies /files/secret/key
     - where: |-
         path.match(literal("files",
             greedy_without("secret", "private")))
@@ -21,10 +17,9 @@ identity:
 cases:
     - request:
         method: GET
-        path: /files/%73ecret/key
+        path: /files/reports/q3
       expect:
-        allowed: false
-        deny_kind: teleport_invalid_request
+        allowed: true
     - request:
         method: GET
         path: /files/secret/key
@@ -33,6 +28,7 @@ cases:
         deny_kind: teleport_request_not_allowed
     - request:
         method: GET
-        path: /files/public/key
+        path: /files/%73ecret/key
       expect:
-        allowed: true
+        allowed: false
+        deny_kind: teleport_invalid_request

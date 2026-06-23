@@ -1,15 +1,16 @@
-description: carve-out (negation)
+description: 'glob_without: exclude single segments'
 rules:
-    - paths:
-        - /**
-      where: '!path.match(literal("admin", greedy()))'
+    # allows /files/report
+    # denies /files/a/b and /files/secret
+    - where: |-
+        path.match(literal("files",
+            glob_without(set("private", "secret"))))
 rules_desugared:
     - pred: |-
         path.match(
-          greedy()) &&
-        !path.match(
-          literal("admin",
-            greedy()))
+          literal("files",
+            glob_without(
+              set("private", "secret"))))
 identity:
     name: bob
     roles:
@@ -17,18 +18,18 @@ identity:
 cases:
     - request:
         method: GET
-        path: /api/users
+        path: /files/report
       expect:
         allowed: true
     - request:
         method: GET
-        path: /admin/users
+        path: /files/a/b
       expect:
         allowed: false
         deny_kind: teleport_request_not_allowed
     - request:
         method: GET
-        path: /admin
+        path: /files/secret
       expect:
         allowed: false
         deny_kind: teleport_request_not_allowed

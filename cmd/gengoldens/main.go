@@ -88,6 +88,17 @@ type topic struct {
 	Examples []example `json:"examples"`
 }
 
+// overlayFile is the hand-curated web-only layer. Ignore lists testdata files
+// (paths relative to the testdata root) to omit from the playground while
+// keeping them as golden tests, so a case stays verified without crowding the
+// example list. Topics are merged in after the generated ones, carrying the
+// examples a golden file cannot express, such as a multi-role scenario or the
+// tour.
+type overlayFile struct {
+	Ignore []string `json:"ignore"`
+	Topics []topic  `json:"topics"`
+}
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -101,8 +112,25 @@ func run() error {
 	overlay := flag.String("overlay", "web/app-access/overlay.json", "web-only overlay JSON merged after the generated topics, empty to skip")
 	flag.Parse()
 
+	var ov overlayFile
+	if *overlay != "" {
+		raw, err := os.ReadFile(*overlay)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(raw, &ov); err != nil {
+			return fmt.Errorf("%s: %w", *overlay, err)
+		}
+	}
+	ignore := map[string]bool{}
+	for _, p := range ov.Ignore {
+		ignore[filepath.Clean(p)] = true
+	}
+
 	// Collect files grouped by their directory, so each testdata subdir becomes
-	// one topic in directory order and each file's cases keep their order.
+	// one topic in directory order and each file's cases keep their order. A file
+	// the overlay names in ignore is skipped here but stays a golden test; it is
+	// omitted only from the playground.
 	byTopic := map[string][]example{}
 	var order []string
 	err := filepath.WalkDir(*testdata, func(path string, d fs.DirEntry, err error) error {
@@ -110,6 +138,13 @@ func run() error {
 			return err
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".yaml") {
+			return nil
+		}
+		rel, err := filepath.Rel(*testdata, path)
+		if err != nil {
+			return err
+		}
+		if ignore[filepath.Clean(rel)] {
 			return nil
 		}
 		examples, err := examplesFromFile(path)
@@ -133,11 +168,9 @@ func run() error {
 		topics = append(topics, topic{Topic: name, Examples: byTopic[name]})
 	}
 
-	if *overlay != "" {
-		topics, err = mergeOverlay(topics, *overlay, *testdata)
-		if err != nil {
-			return err
-		}
+	topics, err = mergeOverlay(topics, ov.Topics, *testdata)
+	if err != nil {
+		return err
 	}
 
 	topics = applyTopicOrder(topics)
@@ -159,15 +192,7 @@ func run() error {
 // example that sets From pulls its rule and input from that testdata file rather
 // than carrying them inline, so a curated topic reuses a verified example; an
 // inline Name then overrides the source's description.
-func mergeOverlay(topics []topic, path, testdata string) ([]topic, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var extra []topic
-	if err := json.Unmarshal(raw, &extra); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
+func mergeOverlay(topics, extra []topic, testdata string) ([]topic, error) {
 	index := map[string]int{}
 	for i, t := range topics {
 		index[t.Topic] = i
