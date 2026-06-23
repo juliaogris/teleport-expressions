@@ -129,13 +129,11 @@ app_resources:
 			want: false,
 		},
 		{
-			// A rule's url_decoding governs the set-level invalid-request
-			// floor: %2F decodes to a separator under one pass, so the path
-			// splits into three segments and matches with x bound to the
-			// first. The strict default floor would have rejected the percent
-			// byte before the rule's decode ran.
-			name: "rule url_decoding admits an encoded path",
-			rule: "role_name: tester\napp_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
+			// capture_encoded binds an encoded segment raw as one token, so an
+			// encoded GitLab-style id matches and binds the whole value. The match
+			// opts into the encoded separator with allow_encoded(set("/")).
+			name: "capture_encoded binds an encoded id raw",
+			rule: "role_name: tester\napp_resources:\n  - pred: |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))), allow_encoded(set(\"/\")))",
 			in: mustInput(t, `
 request:
   method: GET
@@ -145,7 +143,7 @@ identity:
   roles: [tester]
 `),
 			want:     true,
-			wantVars: map[string]string{"x": "a"},
+			wantVars: map[string]string{"x": "a%2Fb"},
 		},
 		{
 			name: "user lacks the role denies",

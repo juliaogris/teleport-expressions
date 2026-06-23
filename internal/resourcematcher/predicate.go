@@ -41,6 +41,33 @@ type Identity struct {
 	Traits map[string][]string
 }
 
+// Option is a per-match setting passed to path.match after the matcher tree,
+// such as allow_encoded. By default a match admits no percent encoding at
+// all: any encoded char in the path forces the rule to no-match, fail-closed,
+// so a negated path.match cannot turn an encoded segment into an allow. An
+// option relaxes that default for the one match it sits on, leaving every other
+// match strict.
+type Option struct {
+	// allowEncoded lists the encoded chars this match admits in the path. It is
+	// empty unless allow_encoded set it. Today only the separator "/" is
+	// supported.
+	allowEncoded []string
+}
+
+// allowsEncodedSlash reports whether any option opts this match into the
+// encoded separator. When false, a path carrying any encoded char fails the
+// match closed.
+func allowsEncodedSlash(opts []Option) bool {
+	for _, opt := range opts {
+		for _, c := range opt.allowEncoded {
+			if c == "/" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // env is the evaluation environment threaded through one predicate evaluation.
 // The vars map is the channel between a matcher and a later identity condition:
 // a path.match call writes the segments its captures bind, and a vars.<name>
@@ -56,15 +83,29 @@ type env struct {
 	state   *evalState
 }
 
-// Opt configures URL decoding for a single path.match call. The opt builders
-// decode_iterations(n) and allow_percent() each return one Opt, and a
-// path.match call applies the opts it carries to build its DecodeConfig. The
-// options ride on the call rather than on the rule so a path.match expression
-// is self-contained: it decodes exactly as written, with nothing pulled from a
-// surrounding YAML field. A rule's Compile step checks every path.match in the
-// rule carries identical options, so a carve-out's negated match cannot decode
-// the subject differently from its positive match.
-type Opt func(*DecodeConfig)
+// pathTokens lazily tokenizes the request path and caches the result in the
+// shared state, so several path.match calls in one evaluation tokenize the path
+// once and a rule with no path.match never tokenizes at all. It reports
+// ok=false when the path is not tokenizable and records tokenizeFailed, which
+// the caller treats as a forced no-match. Returning a flag rather than an error
+// keeps a negated path.match from inverting a tokenize-failure into an allow:
+// tokenizeFailed overrides the boolean no matter which operator read it.
+func (e env) pathTokens() ([]string, bool) {
+	s := e.state
+	if !s.tokenized {
+		s.tokenized = true
+		tokens, err := Tokenize(e.request.Path)
+		if err != nil {
+			s.tokenizeFailed = true
+			return nil, false
+		}
+		s.tokens = tokens
+	}
+	if s.tokenizeFailed {
+		return nil, false
+	}
+	return s.tokens, true
+}
 
 // evalState carries side effects of one evaluation back to the caller. It is
 // held by pointer so the same instance is observed across the whole expression
@@ -77,6 +118,22 @@ type evalState struct {
 	// regardless of the operator that read it (a bare vars.x != "admin" cannot
 	// widen).
 	unboundRead bool
+	// tokens caches the tokenized request path, filled lazily on the first
+	// path.match.
+	tokens []string
+	// tokenized records that the lazy tokenize has run, so it runs at most once
+	// per evaluation even when it produced no tokens.
+	tokenized bool
+	// tokenizeFailed records that the path could not be tokenized. The caller
+	// forces the rule to no-match when this is set, so a path the matcher cannot
+	// read fails closed even behind a negation.
+	tokenizeFailed bool
+	// encodedNotAllowed records that a path.match without the allow_encoded
+	// option met a path carrying an encoded char. By default a match admits no
+	// encoding, so the caller forces the rule to no-match, which makes a negated
+	// path.match fail closed on an encoded segment instead of inverting the miss
+	// into an allow.
+	encodedNotAllowed bool
 }
 
 // predicate is a parsed, type-checked app-access predicate ready to evaluate.
@@ -115,27 +172,36 @@ func newParser() (*typical.CachedParser[env, bool], error) {
 			}),
 		},
 		Functions: map[string]typical.Function{
-			// Matcher entry point. path.match reads the request path from the
-			// environment, tokenizes it under the decode config its opts build,
-			// and walks it against the matcher root. On a match it records the
-			// bound segments into the environment's vars map so a later
-			// var.<name> read can see them, then returns true. The first
-			// argument is the matcher root; any further arguments are decode
-			// options. Several patterns OR together as several path.match calls
-			// joined by ||, so each call carries one root.
-			"path.match": typical.BinaryVariadicFunctionWithEnv(func(e env, root *Node, opts ...Opt) (bool, error) {
-				var cfg DecodeConfig
-				for _, o := range opts {
-					o(&cfg)
-				}
-				tokens, err := Tokenize(e.request.Path, cfg)
-				if err != nil {
-					// An unsafe path is not this predicate's concern to report;
-					// it simply cannot match. The agent rejects such requests
-					// before any rule runs.
+			// Matcher entry point. path.match walks the request path, tokenized
+			// lazily, against the matcher root. On a match it records the bound
+			// segments into the environment's vars map so a later vars.<name>
+			// read can see them, then returns true. A path the tokenizer rejects
+			// records tokenizeFailed and returns false, and the caller forces the
+			// rule to no-match, so a negated path.match cannot turn an unreadable
+			// path into an allow.
+			//
+			// By default the match admits no percent encoding: when no
+			// allow_encoded option is given and the path carries an encoded
+			// char, it records encodedNotAllowed and returns false, and the caller
+			// forces the rule to no-match. This makes a negated path.match fail
+			// closed on an encoded segment rather than inverting the miss into an
+			// allow. The allow_encoded option relaxes this for the one match
+			// it sits on, where a glob_encoded or capture_encoded node then matches
+			// the encoded segment explicitly.
+			"path.match": typical.BinaryVariadicFunctionWithEnv(func(e env, root *Node, opts ...Option) (bool, error) {
+				tokens, ok := e.pathTokens()
+				if !ok {
 					return false, nil
 				}
-				if ok, caps := Eval(tokens, root); ok {
+				if !allowsEncodedSlash(opts) {
+					for _, tok := range tokens {
+						if strings.ContainsRune(tok, '%') {
+							e.state.encodedNotAllowed = true
+							return false, nil
+						}
+					}
+				}
+				if matched, caps := Eval(tokens, root); matched {
 					for k, v := range caps {
 						e.vars[k] = v
 					}
@@ -143,19 +209,16 @@ func newParser() (*typical.CachedParser[env, bool], error) {
 				}
 				return false, nil
 			}),
-			// Decode options for a path.match call. decode_iterations(n) sets
-			// the number of percent-decode passes, and allow_percent() admits a
-			// residual percent byte that survives those passes. Both default to
-			// the strict zero value when omitted: no decode, and reject any
-			// percent byte.
-			"decode_iterations": typical.UnaryFunction[env](func(n int) (Opt, error) {
-				if n < 0 || n > maxDecodeIterations {
-					return nil, trace.BadParameter("decode_iterations must be between 0 and %d", maxDecodeIterations)
+			// allow_encoded opts one path.match into admitting the named
+			// encoded chars, paired with a glob_encoded or capture_encoded node at
+			// each position that carries one. Today only the separator "/" is
+			// supported. Without it a match admits no encoding and an encoded path
+			// fails closed.
+			"allow_encoded": typical.UnaryFunction[env](func(allowed []string) (Option, error) {
+				if err := validateEncodedChars(allowed); err != nil {
+					return Option{}, trace.Wrap(err)
 				}
-				return func(c *DecodeConfig) { c.DecodeIterations = n }, nil
-			}),
-			"allow_percent": typical.UnaryVariadicFunction[env](func(_ ...*Node) (Opt, error) {
-				return func(c *DecodeConfig) { c.AllowPercent = true }, nil
+				return Option{allowEncoded: allowed}, nil
 			}),
 			// Matcher constructors. Each returns one Node, so they nest and
 			// type-check at parse time: every child argument must itself
@@ -171,6 +234,27 @@ func newParser() (*typical.CachedParser[env, bool], error) {
 			}),
 			"glob": typical.UnaryVariadicFunction[env](func(children ...*Node) (*Node, error) {
 				return Glob(children...), nil
+			}),
+			// Encoded-char constructors, the explicit per-position opt-in for an
+			// encoded char. glob and capture are safe-only and reject any percent
+			// byte; these admit a segment that is plain or carries only an
+			// admitted encoded char (today the separator "/", as set("/")), kept
+			// raw and forwarded byte-faithfully. They pair with the
+			// allow_encoded option on path.match, which gates the match.
+			"glob_encoded": typical.BinaryVariadicFunction[env](func(allowed []string, children ...*Node) (*Node, error) {
+				return GlobEncoded(allowed, children...)
+			}),
+			"capture_encoded": typical.TernaryVariadicFunction[env](func(name string, allowed []string, children ...*Node) (*Node, error) {
+				return CaptureEncoded(name, allowed, children...)
+			}),
+			// encoded_literal matches one segment by its decoded value, so it
+			// admits either hex case (%2F or %2f) of an admitted encoded char. The
+			// value is the decoded form with the encoded chars written plain, for
+			// example encoded_literal("mygroup/myproject", set("/")) to pin a
+			// GitLab id. The "/" in the value is content, not a separator: the
+			// node is one segment and never splits.
+			"encoded_literal": typical.TernaryVariadicFunction[env](func(value string, allowed []string, children ...*Node) (*Node, error) {
+				return EncodedLiteral(value, allowed, children...)
 			}),
 			"greedy": typical.UnaryVariadicFunction[env](func(_ ...*Node) (*Node, error) {
 				return Greedy(), nil

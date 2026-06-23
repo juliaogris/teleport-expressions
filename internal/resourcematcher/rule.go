@@ -20,9 +20,6 @@ package resourcematcher
 
 import (
 	"fmt"
-	"go/ast"
-	goparser "go/parser"
-	"go/token"
 	"strconv"
 	"strings"
 
@@ -63,9 +60,6 @@ type Rule struct {
 	// DenyHints explain a deny. On a deny, every hint whose On predicate
 	// matches contributes its DenyCode and DenyReason to the decision.
 	DenyHints []DenyHint `yaml:"deny_hint,omitempty"`
-	// URLDecoding controls path normalization before matching. It defaults to
-	// the strict, reject-everything zero value.
-	URLDecoding DecodeConfig `yaml:"url_decoding,omitempty"`
 }
 
 // DenyHint is one near-miss explanation. On a deny, the hint fires when its On
@@ -100,8 +94,8 @@ const (
 	DenyNotAllowed DenyKind = "teleport_request_not_allowed"
 	// DenyInvalidRequest is the kind for a request denied before any rule
 	// evaluated, because its path was rejected as malformed or unsafe, such as
-	// a "." or ".." segment, consecutive slashes, an illegal byte, or an
-	// encoded reserved character under the strict default decode.
+	// a "." or ".." segment, consecutive slashes, an illegal byte, or a
+	// percent-escape other than the encoded separator %2F.
 	DenyInvalidRequest DenyKind = "teleport_invalid_request"
 )
 
@@ -154,7 +148,6 @@ type Hint struct {
 // CompiledRule is a parsed, ready-to-evaluate rule.
 type CompiledRule struct {
 	pred        predicate
-	decode      DecodeConfig
 	allowCode   string
 	allowReason string
 	denyHints   []compiledHint
@@ -178,13 +171,6 @@ func (r Rule) Compile() (*CompiledRule, error) {
 	}
 	if r.Pred == "" && !hasDeclarative {
 		return nil, trace.BadParameter("a rule must set pred or at least one of paths, methods, where")
-	}
-	// url_decoding is sugar for the declarative form: desugar lowers it into the
-	// decode options on the path.match it emits. A pred-form rule sets its
-	// options inline in the predicate instead, so url_decoding alongside pred is
-	// rejected rather than silently ignored.
-	if r.Pred != "" && r.URLDecoding != (DecodeConfig{}) {
-		return nil, trace.BadParameter("url_decoding applies to the declarative form; set decode options inline in pred")
 	}
 
 	expr := r.Pred
@@ -212,14 +198,7 @@ func (r Rule) Compile() (*CompiledRule, error) {
 	if err := validateLiterals(expr); err != nil {
 		return nil, trace.Wrap(err)
 	}
-
-	// Read the decode options off every path.match in the expression and check
-	// they agree. A carve-out's negated path.match must decode the subject the
-	// same way as the positive match, or an over-encoded path can slip past the
-	// negation while the positive match still admits it. The single agreed
-	// config also serves the pre-rule tokenize check in RoleSet.Evaluate.
-	decode, err := extractDecodeConfig(expr)
-	if err != nil {
+	if err := validateEncodedSets(expr); err != nil {
 		return nil, trace.Wrap(err)
 	}
 
@@ -236,7 +215,6 @@ func (r Rule) Compile() (*CompiledRule, error) {
 
 	return &CompiledRule{
 		pred:        pred,
-		decode:      decode,
 		allowCode:   r.AllowCode,
 		allowReason: r.AllowReason,
 		denyHints:   hints,
@@ -291,6 +269,9 @@ func (r Rule) compileDenyHints() ([]compiledHint, error) {
 		if err := validateLiterals(on); err != nil {
 			return nil, trace.Wrap(err, "deny_hint %d", i)
 		}
+		if err := validateEncodedSets(on); err != nil {
+			return nil, trace.Wrap(err, "deny_hint %d", i)
+		}
 		hints = append(hints, compiledHint{on: onPred, denyCode: h.DenyCode, denyReason: h.DenyReason})
 	}
 	return hints, nil
@@ -330,140 +311,31 @@ func (r Rule) desugar() (string, error) {
 	return joinClauses(path, r.methodClause(), where), nil
 }
 
-// pathClause renders the Paths as one path.match call per pattern, OR-ed with
-// ||. Each call carries the same decode options from URLDecoding, so the rule's
-// path.match calls agree as the load check requires. A run of more than one
-// pattern is wrapped in parentheses so the || binds tighter than the && that
-// joins the path clause to a method or where clause. It is empty when no paths
-// are set.
+// pathClause renders the Paths as one path.match over a root() of the compiled
+// patterns. A lone pattern passes its tree straight through, since a root() that
+// wraps a single child is redundant. It is empty when no paths are set.
 func (r Rule) pathClause() (string, error) {
 	if len(r.Paths) == 0 {
 		return "", nil
 	}
-	opts := optsSource(r.URLDecoding)
-	calls := make([]string, 0, len(r.Paths))
+	nodes := make([]*Node, 0, len(r.Paths))
 	for _, p := range r.Paths {
 		node, err := Compile(p)
 		if err != nil {
 			return "", trace.Wrap(err)
 		}
-		calls = append(calls, fmt.Sprintf("path.match(%s%s)", nodeToSource(node), opts))
+		nodes = append(nodes, node)
 	}
-	joined := strings.Join(calls, " || ")
-	if len(calls) > 1 {
-		joined = "(" + joined + ")"
+	// Emit a single path.match. Several patterns OR through one root() node
+	// rather than several path.match calls joined by ||, so the desugared form
+	// always has exactly one path.match and the decode options live on that one
+	// call. A root() that wraps a single child is redundant, so a lone pattern
+	// passes its tree straight through.
+	tree := nodes[0]
+	if len(nodes) > 1 {
+		tree = &Node{kind: kindRoot, children: nodes}
 	}
-	return joined, nil
-}
-
-// optsSource renders a DecodeConfig as the trailing decode option arguments to
-// a path.match call: ", decode_iterations(n)" when n is positive, and
-// ", allow_percent()" when set. The strict zero value renders nothing, so a
-// default rule desugars to a bare path.match(<tree>).
-func optsSource(cfg DecodeConfig) string {
-	var b strings.Builder
-	if cfg.DecodeIterations > 0 {
-		fmt.Fprintf(&b, ", decode_iterations(%d)", cfg.DecodeIterations)
-	}
-	if cfg.AllowPercent {
-		b.WriteString(", allow_percent()")
-	}
-	return b.String()
-}
-
-// extractDecodeConfig reads the decode options off every path.match call in
-// expr and returns the single config they share. Divergent options are a load
-// error: a carve-out's negated path.match must decode the subject the same way
-// as the positive match, or an over-encoded path can slip past the negation
-// while the positive match still admits it. A rule with no path.match call
-// decodes nothing and returns the strict zero value.
-func extractDecodeConfig(expr string) (DecodeConfig, error) {
-	root, err := goparser.ParseExpr(expr)
-	if err != nil {
-		// parsePredicate already accepted expr, so a parse failure here is
-		// unexpected and is reported rather than swallowed.
-		return DecodeConfig{}, trace.Wrap(err, "parsing expression for decode options")
-	}
-	var (
-		cfg      DecodeConfig
-		found    bool
-		mismatch bool
-		walkErr  error
-	)
-	ast.Inspect(root, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return true
-		}
-		pkg, ok := sel.X.(*ast.Ident)
-		if !ok || pkg.Name != "path" || sel.Sel.Name != "match" {
-			return true
-		}
-		c, err := parseMatchOpts(call.Args)
-		if err != nil {
-			walkErr = err
-			return false
-		}
-		switch {
-		case !found:
-			cfg, found = c, true
-		case c != cfg:
-			mismatch = true
-		}
-		return true
-	})
-	if walkErr != nil {
-		return DecodeConfig{}, trace.Wrap(walkErr)
-	}
-	if mismatch {
-		return DecodeConfig{}, trace.BadParameter(
-			"all path.match calls in a rule must carry identical decode options, so a negated match decodes the path the same way as the positive match")
-	}
-	return cfg, nil
-}
-
-// parseMatchOpts reads the decode options from one path.match call's arguments.
-// The first argument is the matcher root and is ignored here; each remaining
-// argument must be a decode_iterations(n) or allow_percent() call.
-func parseMatchOpts(args []ast.Expr) (DecodeConfig, error) {
-	var cfg DecodeConfig
-	if len(args) == 0 {
-		return cfg, trace.BadParameter("path.match requires a matcher argument")
-	}
-	for _, a := range args[1:] {
-		call, ok := a.(*ast.CallExpr)
-		if !ok {
-			return cfg, trace.BadParameter("path.match options must be decode_iterations(n) or allow_percent()")
-		}
-		id, ok := call.Fun.(*ast.Ident)
-		if !ok {
-			return cfg, trace.BadParameter("path.match options must be decode_iterations(n) or allow_percent()")
-		}
-		switch id.Name {
-		case "decode_iterations":
-			if len(call.Args) != 1 {
-				return cfg, trace.BadParameter("decode_iterations takes one argument")
-			}
-			lit, ok := call.Args[0].(*ast.BasicLit)
-			if !ok || lit.Kind != token.INT {
-				return cfg, trace.BadParameter("decode_iterations takes an integer literal")
-			}
-			n, err := strconv.Atoi(lit.Value)
-			if err != nil {
-				return cfg, trace.Wrap(err, "parsing decode_iterations argument")
-			}
-			cfg.DecodeIterations = n
-		case "allow_percent":
-			cfg.AllowPercent = true
-		default:
-			return cfg, trace.BadParameter("unknown path.match option %q", id.Name)
-		}
-	}
-	return cfg, nil
+	return fmt.Sprintf("path.match(%s)", nodeToSource(tree)), nil
 }
 
 // methodClause renders the Methods as a membership test against the request
@@ -509,6 +381,18 @@ func nodeToSource(n *Node) string {
 		return constructorSource("capture", strconv.Quote(n.text), n.children)
 	case kindGlob:
 		return constructorSource("glob", "", n.children)
+	case kindGlobEncoded:
+		return constructorSource("glob_encoded", encodedSetSource(n.allowedEncoded), n.children)
+	case kindCaptureEncoded:
+		// capture_encoded carries two leading args, the bound name and the
+		// allowed-encoded set, so render the lead as the comma-joined pair.
+		lead := strconv.Quote(n.text) + ", " + encodedSetSource(n.allowedEncoded)
+		return constructorSource("capture_encoded", lead, n.children)
+	case kindEncodedLiteral:
+		// encoded_literal carries the decoded value and the allowed-encoded set
+		// as its two leading args, the same pair form as capture_encoded.
+		lead := strconv.Quote(n.text) + ", " + encodedSetSource(n.allowedEncoded)
+		return constructorSource("encoded_literal", lead, n.children)
 	case kindRoot:
 		return constructorSource("root", "", n.children)
 	case kindSlash:
@@ -520,6 +404,17 @@ func nodeToSource(n *Node) string {
 	default:
 		return ""
 	}
+}
+
+// encodedSetSource renders the allowed-encoded chars of an encoded node as a
+// set(...) call, the form glob_encoded and capture_encoded take as their
+// leading argument, so the rendered source parses back to the same node.
+func encodedSetSource(allowed []string) string {
+	quoted := make([]string, 0, len(allowed))
+	for _, c := range allowed {
+		quoted = append(quoted, strconv.Quote(c))
+	}
+	return "set(" + strings.Join(quoted, ", ") + ")"
 }
 
 // constructorSource renders one matcher constructor call. lead is the quoted
@@ -547,10 +442,12 @@ func (c *CompiledRule) Evaluate(request Request, identity Identity) (Decision, e
 	if err != nil {
 		return Decision{}, trace.Wrap(err)
 	}
-	// A read of a capture the matcher did not bind on this request forces the
-	// rule to no-match, so an unbound capture can only deny, never widen, no
-	// matter which operator read it.
-	if allowed && !e.state.unboundRead {
+	// A read of a capture the matcher did not bind, a path the tokenizer
+	// rejected, or an encoded char in a match that did not opt in, forces the
+	// rule to no-match. All three can only deny, never widen, no matter which
+	// operator read them, so an unbound capture, an unreadable path, or an
+	// unexpected encoded segment fails closed even behind a negation.
+	if allowed && !e.state.unboundRead && !e.state.tokenizeFailed && !e.state.encodedNotAllowed {
 		return Decision{
 			Allowed: true,
 			Allow:   &AllowDetails{Vars: e.vars, Code: c.allowCode, Reason: c.allowReason},
@@ -570,9 +467,8 @@ func (c *CompiledRule) Evaluate(request Request, identity Identity) (Decision, e
 	return Decision{Deny: &DenyDetails{Kind: DenyNotAllowed, Hints: fired}}, nil
 }
 
-// newEnv builds a fresh evaluation environment for one request. Decoding is no
-// longer carried on the environment: each path.match call builds its own decode
-// config from the options it carries.
+// newEnv builds a fresh evaluation environment for one request. The first
+// path.match tokenizes the path lazily into the shared state.
 func newEnv(request Request, identity Identity) env {
 	return env{
 		request: request,
@@ -583,14 +479,16 @@ func newEnv(request Request, identity Identity) env {
 }
 
 // evalPredicate evaluates a predicate against a fresh environment and applies
-// the unbound-capture guard, returning whether it matched.
+// the no-match guards, returning whether it matched. An unbound capture read, a
+// path the tokenizer rejected, or an encoded char in a match that did not opt
+// in forces a no-match.
 func evalPredicate(p predicate, request Request, identity Identity) (bool, error) {
 	e := newEnv(request, identity)
 	ok, err := p.Evaluate(e)
 	if err != nil {
 		return false, trace.Wrap(err)
 	}
-	return ok && !e.state.unboundRead, nil
+	return ok && !e.state.unboundRead && !e.state.tokenizeFailed && !e.state.encodedNotAllowed, nil
 }
 
 // validateCode checks an allow or deny code: 1 to 64 of [a-z0-9_], and not the
@@ -669,13 +567,11 @@ func (s RoleSet) EvaluatedRoles() []string {
 // misconfigured default-deny, an empty set, from a request that a granting role
 // did not match.
 //
-// A request whose path no rule can tokenize under that rule's own url_decoding
-// is malformed or unsafe under every decode policy the set offers, so it is
-// denied with DenyInvalidRequest before any rule runs, mirroring the agent's
-// pre-rule rejection. Checking per rule, rather than at one strict floor, lets
-// a rule's url_decoding admit an encoded path the strict default would reject,
-// while a genuinely malformed path, such as an illegal byte or a "." or ".."
-// segment, still fails under every rule and stays invalid.
+// A request whose path the tokenizer rejects is malformed or unsafe (an illegal
+// byte, a percent-escape other than the encoded separator %2F, a "." or ".."
+// segment, or consecutive slashes), so it is denied with DenyInvalidRequest
+// before any rule runs, mirroring the agent's pre-rule rejection. Tokenizing is
+// rule-independent, so a single check at the top serves the whole set.
 func (s RoleSet) Evaluate(request Request, identity Identity) (Decision, error) {
 	roles := s.EvaluatedRoles()
 	if hasRules, ok := s.canTokenize(request.Path); hasRules && !ok {
@@ -705,19 +601,20 @@ func (s RoleSet) Evaluate(request Request, identity Identity) (Decision, error) 
 	}, nil
 }
 
-// canTokenize reports whether the set holds any rule, and whether at least one
-// rule can tokenize path under that rule's own url_decoding. A path no rule can
-// tokenize is malformed under every decode policy the set offers; an empty set
-// has no rules and is a misconfigured default-deny rather than an invalid
-// request.
+// canTokenize reports whether the set holds any rule, and whether path
+// tokenizes. A path the tokenizer rejects is malformed; an empty set has no
+// rules and is a misconfigured default-deny rather than an invalid request, so
+// hasRules guards the invalid-request verdict.
 func (s RoleSet) canTokenize(path string) (hasRules, ok bool) {
 	for _, role := range s {
-		for _, rule := range role.rules {
+		if len(role.rules) > 0 {
 			hasRules = true
-			if _, err := Tokenize(path, rule.decode); err == nil {
-				return true, true
-			}
+			break
 		}
 	}
-	return hasRules, false
+	if !hasRules {
+		return false, false
+	}
+	_, err := Tokenize(path)
+	return true, err == nil
 }

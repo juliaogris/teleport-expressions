@@ -34,6 +34,5 @@ func (r Rule) DesugaredRule() (Rule, error) {
 		AllowCode:   r.AllowCode,
 		AllowReason: r.AllowReason,
 		DenyHints:   hints,
-		URLDecoding: r.URLDecoding,
 	}, nil
 }

@@ -37,20 +37,43 @@ import (
 	"github.com/gravitational/trace"
 )
 
-// kind enumerates the four matcher node kinds.
+// kind enumerates the matcher node kinds.
 type kind int
 
 const (
 	// kindLiteral matches a token equal to its text.
 	kindLiteral kind = iota
-	// kindGlob matches exactly one non-empty token, the `*` metacharacter.
+	// kindGlob matches exactly one non-empty token that carries no percent
+	// encoding, the `*` metacharacter. It is safe-only: an encoded slash is
+	// never admitted, so a `*` cannot silently span one.
 	kindGlob
 	// kindCapture matches one token and binds it under capture.<name>, the
-	// `{name}` metacharacter.
+	// `{name}` metacharacter. Like glob, it is safe-only and rejects a token
+	// that carries percent encoding.
 	kindCapture
 	// kindGreedy matches zero or more trailing tokens, the `**`
-	// metacharacter. It is terminal and carries no children.
+	// metacharacter. It is terminal and carries no children. It is repeated
+	// safe glob: it spans only tokens with no percent encoding, so a broad `**`
+	// never silently absorbs an encoded slash.
 	kindGreedy
+	// kindGlobEncoded matches exactly one non-empty token that is plain or
+	// carries only an encoded char the node admits, kept raw. The admitted set
+	// is held in allowedEncoded; today only the encoded separator (%2F/%2f, any
+	// count) is supported. It is the explicit per-position opt-in that admits an
+	// encoded char where a real API requires it.
+	kindGlobEncoded
+	// kindCaptureEncoded matches one such token and binds it raw under
+	// capture.<name>, forwarded byte-faithfully with no decode and no re-encode.
+	kindCaptureEncoded
+	// kindEncodedLiteral matches one token whose decoded value equals its text,
+	// where the admitted encoded chars are decoded for the comparison. text holds
+	// the decoded value, so encoded_literal("a/b/c") matches the token
+	// "a%2Fb%2Fc". The "/" in text is content, not a separator: the node is one
+	// segment by definition, so unlike kindLiteral it never splits. The match is
+	// hex case-insensitive (%2F and %2f both decode to "/"), and the raw token is
+	// forwarded byte-faithfully. It is the only node that decodes for matching;
+	// every other decode is a throwaway validation view.
+	kindEncodedLiteral
 	// kindRoot is the synthetic top node. It consumes no token and matches
 	// each child against the same segment, so its children are alternative
 	// roots OR-ed together. It is the one place an alternation can sit with no
@@ -89,6 +112,11 @@ type Node struct {
 	// it carves a deny out of an otherwise greedy match. The exclusion is a
 	// pure negative test and binds no captures.
 	greedyExcept []*Node
+	// allowedEncoded holds the encoded chars a kindGlobEncoded or
+	// kindCaptureEncoded node admits in its segment. It is set by GlobEncoded
+	// and CaptureEncoded. Today only the separator "/" is supported, so the
+	// node admits a token that is plain or carries only the encoded separator.
+	allowedEncoded []string
 }
 
 // Literal builds a node that matches one or more fixed segments. The string is
@@ -179,6 +207,91 @@ func Capture(name string, children ...*Node) *Node {
 	return &Node{kind: kindCapture, text: name, children: children}
 }
 
+// GlobEncoded builds a node that matches exactly one non-empty segment that is
+// plain or carries only an admitted encoded char, kept raw. The allowed set
+// names which encoded chars the segment may carry; today only the separator
+// "/" is supported, so the node admits the encoded separator (%2F/%2f, any
+// count). It is the explicit, per-position opt-in for an encoded char: a plain
+// glob rejects any percent byte, so a rule names this matcher exactly where a
+// real API requires an encoded char, such as a GitLab project id. It pairs with
+// the allow_encoded option on path.match, which gates the whole match.
+func GlobEncoded(allowed []string, children ...*Node) (*Node, error) {
+	if err := validateEncodedChars(allowed); err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return &Node{kind: kindGlobEncoded, allowedEncoded: allowed, children: children}, nil
+}
+
+// CaptureEncoded builds a node that matches one such segment and binds it under
+// capture.<name>, the capture form of GlobEncoded. The bound value is the raw
+// bytes, forwarded byte-faithfully with no decode and no re-encode, so the
+// agent's view and the upstream's stay identical. The matcher sees one opaque
+// blob and cannot reach inside it; an inner constraint belongs in a where:
+// check on the captured raw string.
+func CaptureEncoded(name string, allowed []string, children ...*Node) (*Node, error) {
+	if err := validateEncodedChars(allowed); err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return &Node{kind: kindCaptureEncoded, text: name, allowedEncoded: allowed, children: children}, nil
+}
+
+// EncodedLiteral builds a node that matches one segment whose decoded value
+// equals value, with the admitted encoded chars decoded for the comparison.
+// Today only the separator "/" is supported, so EncodedLiteral("a/b/c",
+// set("/")) matches the token "a%2Fb%2Fc" or "a%2fb%2fc": the match is hex
+// case-insensitive, the win over a plain literal, which pins the exact bytes.
+// The "/" in value is content, the thing that was encoded, not a separator, so
+// the node is one segment and never splits the way Literal does. The raw token
+// is forwarded byte-faithfully. It pairs with the allow_encoded option on
+// path.match, which gates the whole match.
+func EncodedLiteral(value string, allowed []string, children ...*Node) (*Node, error) {
+	if err := validateEncodedChars(allowed); err != nil {
+		return nil, trace.Wrap(err)
+	}
+	if err := validateEncodedLiteralValue(value); err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return &Node{kind: kindEncodedLiteral, text: value, allowedEncoded: allowed, children: children}, nil
+}
+
+// validateEncodedLiteralValue rejects an encoded_literal value that is not a
+// clean decoded path fragment. The value is what a request token decodes to, so
+// each "/"-separated part must be a legal, non-empty URL path segment, must not
+// be a relative "." or "..", and must carry no "%": the author writes the
+// decoded form, and the node re-derives the encoded form to match.
+func validateEncodedLiteralValue(value string) error {
+	for _, part := range strings.Split(value, "/") {
+		if err := validateSegment(part); err != nil {
+			return trace.Wrap(err)
+		}
+		if part == "." || part == ".." {
+			return trace.BadParameter("encoded_literal value %q has a relative segment %q", value, part)
+		}
+		if strings.ContainsRune(part, '%') {
+			return trace.BadParameter(
+				"encoded_literal value %q must be the decoded form and carry no %%-escape; write the plain value", value)
+		}
+	}
+	return nil
+}
+
+// validateEncodedChars rejects an empty allowed set or any entry other than the
+// separator "/". The model admits an encoded char only when it is byte-faithful
+// to forward and structurally meaningful, and the separator is the only such
+// char today, so the set is restricted to "/" until another is designed.
+func validateEncodedChars(allowed []string) error {
+	if len(allowed) == 0 {
+		return trace.BadParameter("an encoded-char matcher must allow at least one char")
+	}
+	for _, c := range allowed {
+		if c != "/" {
+			return trace.BadParameter(
+				"encoded char %q is not supported; only the separator %q is admitted for now", c, "/")
+		}
+	}
+	return nil
+}
+
 // Greedy builds a terminal node that matches zero or more trailing segments,
 // the `**` metacharacter. It takes no children.
 func Greedy() *Node {
@@ -264,7 +377,7 @@ func containsCapture(n *Node) bool {
 	if n == nil {
 		return false
 	}
-	if n.kind == kindCapture {
+	if n.kind == kindCapture || n.kind == kindCaptureEncoded {
 		return true
 	}
 	for _, c := range n.children {
@@ -310,10 +423,18 @@ func matchNode(node *Node, tokens []string, i int, caps map[string]string) bool 
 		return false
 	case kindGreedy:
 		// Greedy is terminal and matches the entire remaining suffix,
-		// including zero tokens. When the node carries exclusions, the suffix
-		// must match none of them: each exclusion is a negative test, walked
-		// against a throwaway capture map so a binding inside an exclusion never
-		// leaks into the real match.
+		// including zero tokens. It is repeated safe glob, so the suffix must
+		// carry no percent encoding: a single encoded segment anywhere in the
+		// tail stops the greedy, which is why a broad `**` never silently
+		// absorbs an encoded slash.
+		for _, tok := range tokens[i:] {
+			if strings.ContainsRune(tok, '%') {
+				return false
+			}
+		}
+		// When the node carries exclusions, the suffix must match none of them:
+		// each exclusion is a negative test, walked against a throwaway capture
+		// map so a binding inside an exclusion never leaks into the real match.
 		for _, excl := range node.greedyExcept {
 			if matchNode(excl, tokens, i, map[string]string{}) {
 				return false
@@ -334,7 +455,9 @@ func matchNode(node *Node, tokens []string, i int, caps map[string]string) bool 
 		}
 		return matchChildren(node, tokens, i, caps)
 	case kindGlob:
-		if i >= len(tokens) || tokens[i] == "" {
+		// Safe-only: a glob matches one segment that carries no percent
+		// encoding, so it never spans an encoded slash.
+		if i >= len(tokens) || tokens[i] == "" || strings.ContainsRune(tokens[i], '%') {
 			return false
 		}
 		if slices.Contains(node.globExclude, tokens[i]) {
@@ -342,11 +465,37 @@ func matchNode(node *Node, tokens []string, i int, caps map[string]string) bool 
 		}
 		return matchChildren(node, tokens, i, caps)
 	case kindCapture:
-		if i >= len(tokens) || tokens[i] == "" {
+		// Safe-only, like glob: a capture binds one segment with no percent
+		// encoding. Use capture_encoded to bind an encoded segment.
+		if i >= len(tokens) || tokens[i] == "" || strings.ContainsRune(tokens[i], '%') {
 			return false
 		}
 		// Bind before descending so a child predicate can read the capture.
 		caps[node.text] = tokens[i]
+		return matchChildren(node, tokens, i, caps)
+	case kindGlobEncoded:
+		// Admit one segment that is plain or carries only the encoded separator.
+		if i >= len(tokens) || tokens[i] == "" || !onlyEncodedSlash(tokens[i]) {
+			return false
+		}
+		return matchChildren(node, tokens, i, caps)
+	case kindCaptureEncoded:
+		if i >= len(tokens) || tokens[i] == "" || !onlyEncodedSlash(tokens[i]) {
+			return false
+		}
+		// Bind the raw bytes so the captured value forwards byte-faithfully.
+		caps[node.text] = tokens[i]
+		return matchChildren(node, tokens, i, caps)
+	case kindEncodedLiteral:
+		// Decode the admitted encoded chars and compare to the literal value, so
+		// the token's hex case does not matter. The raw token is still what gets
+		// forwarded; this decode is only the comparison.
+		if i >= len(tokens) || tokens[i] == "" || !onlyEncodedSlash(tokens[i]) {
+			return false
+		}
+		if decodeSeparators(tokens[i]) != node.text {
+			return false
+		}
 		return matchChildren(node, tokens, i, caps)
 	default:
 		return false
@@ -367,6 +516,24 @@ func matchChildren(node *Node, tokens []string, i int, caps map[string]string) b
 		}
 	}
 	return false
+}
+
+// onlyEncodedSlash reports whether token carries no percent-escape other than
+// the encoded separator %2F/%2f. The encoded-slash nodes admit a token only
+// when this holds, so a plain id and an encoded id both match but a token with
+// any other escape does not. Tokenize already guarantees this for every real
+// request token, so the check is a self-contained guard that keeps the node
+// correct even when a token reaches it directly, such as in a unit test.
+func onlyEncodedSlash(token string) bool {
+	for i := 0; i < len(token); i++ {
+		if token[i] != '%' {
+			continue
+		}
+		if i+2 >= len(token) || token[i+1] != '2' || (token[i+2] != 'F' && token[i+2] != 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // Compile parses a declarative path pattern such as

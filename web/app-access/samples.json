@@ -113,9 +113,9 @@
         "input": "request:\n  method: GET\n  path: /files/a\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
-        "name": "carve-out that decodes too",
-        "rule": "role_name: developer\napp_resources:\n  - where: |\n      !path.match(literal(\"files\",\n          literal(\"secret\", greedy())),\n      decode_iterations(1))",
-        "input": "request:\n  method: GET\n  path: /files/%73ecret/key\nidentity:\n  name: bob\n  roles: [developer]"
+        "name": "carve-out: an encoded slash can't slip the deny",
+        "rule": "role_name: developer\napp_resources:\n  # A negated carve-out denies /files/secret.\n  # An encoded slash no longer slips it: a\n  # match that did not opt in fails closed on\n  # any encoded segment, even behind the !.\n  - where: |\n      !path.match(literal(\"files\",\n          literal(\"secret\", greedy())))",
+        "input": "request:\n  method: GET\n  path: /files/secret%2fkey\nidentity:\n  name: bob\n  roles: [developer]"
       }
     ]
   },
@@ -134,7 +134,7 @@
       },
       {
         "name": "greedy_without: encoded path can't slip the deny",
-        "rule": "role_name: developer\napp_resources:\n  - where: |\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")),\n      decode_iterations(1))",
+        "rule": "role_name: developer\napp_resources:\n  # An encoded \"s\" (%73) never decodes: the\n  # strict tokenizer rejects any escape that\n  # is not the encoded separator, so the\n  # request is invalid before a rule runs.\n  - where: |\n      path.match(literal(\"files\",\n          greedy_without(\"secret\", \"private\")))",
         "input": "request:\n  method: GET\n  path: /files/%73ecret/key\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
@@ -205,42 +205,37 @@
     ]
   },
   {
-    "topic": "url decoding",
+    "topic": "encoded slash",
     "examples": [
       {
         "name": "strict default rejects %2F",
-        "rule": "role_name: developer\napp_resources:\n  # url_decoding options normalize the path.\n  # Default: no decode, reject every % byte.\n  - paths: [\"/files/**\"]",
+        "rule": "role_name: developer\napp_resources:\n  # By default no percent encoding is\n  # admitted: a safe ** never spans an\n  # encoded slash, so /files/a%2Fb is denied.\n  - paths: [\"/files/**\"]",
         "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
-        "name": "one pass admits %2F",
-        "rule": "role_name: developer\napp_resources:\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1",
+        "name": "glob_encoded admits an encoded slash",
+        "rule": "role_name: developer\napp_resources:\n  # glob_encoded names one position that may\n  # carry an encoded slash; allow_encoded\n  # opts the whole match in.\n  - pred: |-\n      path.match(literal(\"files\",\n          glob_encoded(set(\"/\"))),\n      allow_encoded(set(\"/\")))",
         "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob\n  roles: [developer]"
       },
       {
-        "name": "one pass rejects %252F",
-        "rule": "role_name: developer\napp_resources:\n  # One pass leaves a residual % in a\n  # double-encoded path, so it is rejected.\n  - paths: [\"/files/{x}/*\"]\n    url_decoding:\n      decode_iterations: 1 # change to 2",
+        "name": "capture_encoded binds a GitLab id, plain or encoded",
+        "rule": "role_name: developer\napp_resources:\n  # A GitLab project id is a number or an\n  # encoded group/project. capture_encoded\n  # binds both forms raw as one segment.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          capture_encoded(\"project\", set(\"/\"), greedy())),\n      allow_encoded(set(\"/\")))",
+        "input": "request:\n  method: GET\n  path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n  name: bob\n  roles: [developer]"
+      },
+      {
+        "name": "encoded_literal pins one id, either hex case",
+        "rule": "role_name: developer\napp_resources:\n  # encoded_literal matches one segment by\n  # its decoded value, so it pins an exact id\n  # and accepts %2F or %2f. The \"/\" in the\n  # value is content, so the node is one\n  # segment and never splits.\n  - pred: |-\n      path.match(literal(\"api/v4/projects\",\n          encoded_literal(\"mygroup/myproject\", set(\"/\"),\n              literal(\"issues\"))),\n      allow_encoded(set(\"/\")))",
+        "input": "request:\n  method: GET\n  path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n  name: bob\n  roles: [developer]"
+      },
+      {
+        "name": "npm scoped package keeps its @ raw",
+        "rule": "role_name: developer\napp_resources:\n  # The @ is forwarded raw, never re-encoded\n  # to %40; the slash between scope and name\n  # is the encoded separator.\n  - pred: |-\n      path.match(literal(\"registry\",\n          capture_encoded(\"package\", set(\"/\"))),\n      allow_encoded(set(\"/\")))",
+        "input": "request:\n  method: GET\n  path: /registry/@babel%2fcore\nidentity:\n  name: bob\n  roles: [developer]"
+      },
+      {
+        "name": "double-encoded slash is rejected",
+        "rule": "role_name: developer\napp_resources:\n  # %252F begins with the escape %25, which\n  # is not the separator, so the whole path\n  # is rejected before any rule runs.\n  - pred: |-\n      path.match(literal(\"files\",\n          glob_encoded(set(\"/\"))),\n      allow_encoded(set(\"/\")))",
         "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob\n  roles: [developer]"
-      },
-      {
-        "name": "allow_percent keeps literal %",
-        "rule": "role_name: developer\napp_resources:\n  # allow_percent admits a residual %,\n  # so a%2Fb stays one segment.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      allow_percent: true",
-        "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob\n  roles: [developer]"
-      },
-      {
-        "name": "decode then allow residual %",
-        "rule": "role_name: developer\napp_resources:\n  # decode_iterations and allow_percent\n  # combine: decode once, then admit any\n  # leftover %.\n  - paths: [\"/files/{x}\"]\n    url_decoding:\n      decode_iterations: 1\n      allow_percent: true",
-        "input": "request:\n  method: GET\n  path: /files/a%252Fb\nidentity:\n  name: bob\n  roles: [developer]"
-      },
-      {
-        "name": "decode in the predicate, no YAML",
-        "rule": "role_name: developer\napp_resources:\n  # A bare predicate passes the url_decoding\n  # options as call arguments, not YAML.\n  - pred: |\n      path.match(literal(\"files\",\n          capture(\"x\", glob())),\n      decode_iterations(1))",
-        "input": "request:\n  method: GET\n  path: /files/a%2Fb\nidentity:\n  name: bob\n  roles: [developer]"
-      },
-      {
-        "name": "mismatched decode opts is an error",
-        "rule": "role_name: developer\napp_resources:\n  # Every path.match must decode the same\n  # way, or a negation could decode deeper\n  # than the positive match and slip past.\n  - pred: |-\n      path.match(literal(\"files\", greedy()), decode_iterations(1)) &&\n      !path.match(literal(\"files\", literal(\"secret\", greedy())), decode_iterations(2))",
-        "input": "request:\n  method: GET\n  path: /files/a\nidentity:\n  name: bob\n  roles: [developer]"
       }
     ]
   },
