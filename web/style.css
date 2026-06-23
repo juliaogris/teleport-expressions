@@ -23,6 +23,8 @@ main {
   padding: 2.5rem 1.25rem 4rem;
 }
 h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+h1 a { color: inherit; text-decoration: none; }
+h1 a:hover { text-decoration: underline; }
 p.lede { color: var(--muted); margin: 0 0 1.75rem; }
 footer a, .toc a { color: var(--accent); text-decoration: none; }
 .toc a:hover { text-decoration: underline; }
