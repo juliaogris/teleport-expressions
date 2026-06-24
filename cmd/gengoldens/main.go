@@ -92,12 +92,24 @@ type topic struct {
 // overlayFile is the hand-curated web-only layer. Ignore lists testdata files
 // (paths relative to the testdata root) to omit from the playground while
 // keeping them as golden tests, so a case stays verified without crowding the
-// example list. Topics are merged in after the generated ones, carrying the
-// examples a golden file cannot express, such as a multi-role scenario or the
-// tour.
+// example list. Order lists testdata files in the sequence they should appear
+// within their topic, so the playground keeps a curated teaching order that the
+// un-prefixed filenames no longer imply; a file not listed sorts after the
+// listed ones in filename order. Topics are merged in after the generated ones,
+// carrying the examples a golden file cannot express, such as a multi-role
+// scenario or the tour.
 type overlayFile struct {
 	Ignore []string `json:"ignore"`
+	Order  []string `json:"order"`
 	Topics []topic  `json:"topics"`
+}
+
+// topicFile pairs a topic's testdata file with the examples it yields, so the
+// files in a topic can be reordered by the overlay order before the examples
+// are flattened.
+type topicFile struct {
+	rel      string
+	examples []example
 }
 
 func main() {
@@ -128,11 +140,24 @@ func run() error {
 		ignore[filepath.Clean(p)] = true
 	}
 
+	// rank maps a testdata-relative file to its position in the overlay order
+	// list, so the examples within a topic follow the curated teaching sequence.
+	// A file the overlay does not list ranks last and keeps its filename order.
+	rankOf := map[string]int{}
+	for i, p := range ov.Order {
+		rankOf[filepath.Clean(p)] = i
+	}
+	rank := func(rel string) int {
+		if r, ok := rankOf[rel]; ok {
+			return r
+		}
+		return len(ov.Order)
+	}
+
 	// Collect files grouped by their directory, so each testdata subdir becomes
-	// one topic in directory order and each file's cases keep their order. A file
-	// the overlay names in ignore is skipped here but stays a golden test; it is
-	// omitted only from the playground.
-	byTopic := map[string][]example{}
+	// one topic in directory order. A file the overlay names in ignore is skipped
+	// here but stays a golden test; it is omitted only from the playground.
+	byTopic := map[string][]topicFile{}
 	var order []string
 	err := filepath.WalkDir(*testdata, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -145,7 +170,8 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if ignore[filepath.Clean(rel)] {
+		rel = filepath.Clean(rel)
+		if ignore[rel] {
 			return nil
 		}
 		examples, err := examplesFromFile(path)
@@ -156,7 +182,7 @@ func run() error {
 		if _, seen := byTopic[name]; !seen {
 			order = append(order, name)
 		}
-		byTopic[name] = append(byTopic[name], examples...)
+		byTopic[name] = append(byTopic[name], topicFile{rel: rel, examples: examples})
 		return nil
 	})
 	if err != nil {
@@ -166,7 +192,19 @@ func run() error {
 
 	topics := make([]topic, 0, len(order))
 	for _, name := range order {
-		topics = append(topics, topic{Topic: name, Examples: byTopic[name]})
+		files := byTopic[name]
+		// WalkDir yields files in filename order; reorder within the topic by the
+		// overlay order so the curated teaching sequence holds. The sort is stable,
+		// so files the overlay omits keep their filename order after the listed
+		// ones.
+		sort.SliceStable(files, func(i, j int) bool {
+			return rank(files[i].rel) < rank(files[j].rel)
+		})
+		var examples []example
+		for _, f := range files {
+			examples = append(examples, f.examples...)
+		}
+		topics = append(topics, topic{Topic: name, Examples: examples})
 	}
 
 	topics, err = mergeOverlay(topics, ov.Topics, *testdata)

@@ -8,6 +8,7 @@
 package appaccess
 
 import (
+	"bytes"
 	"fmt"
 	"slices"
 
@@ -161,9 +162,17 @@ func Desugar(resourcesYAML string) (string, error) {
 	}
 
 	out := desugaredDoc{RoleName: doc.RoleName, AppResourcesExpr: append(lowered, doc.AppResourcesExpr...)}
-	marshalled, err := yaml.Marshal(out)
-	if err != nil {
+	// Encode at a two-space indent, matching the sugared rule the playground
+	// shows alongside, so the two panes line up rather than mixing yaml.v3's
+	// default four-space indent with the generated two-space sugar.
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(out); err != nil {
 		return "", trace.Wrap(err, "encoding app_resources")
 	}
-	return string(marshalled), nil
+	if err := enc.Close(); err != nil {
+		return "", trace.Wrap(err, "encoding app_resources")
+	}
+	return buf.String(), nil
 }
