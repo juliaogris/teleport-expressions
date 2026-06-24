@@ -1,9 +1,9 @@
 description: GitLab project id, plain or encoded, in one node
 app_resources_expression:
-    # A GitLab project id is either a numeric id (123) or a URL-encoded
-    # "group/project" path. capture_encoded binds both forms as one raw
-    # segment, with no OR-doubling between a plain and an encoded matcher. The
-    # match opts into the encoded separator with allow_encoded(set("/")).
+    # allow_encoded opts in the encoded
+    # separator. One capture_encoded binds
+    # a plain id (123) or an encoded
+    # group/project, no OR-doubling.
     - |-
       path.match(literal("api/v4/projects",
           capture_encoded("project", set("/"), greedy())),

@@ -189,22 +189,22 @@
     "examples": [
       {
         "name": "an encoded node without allow_encoded fails closed",
-        "rule": "role_name: developer\napp_resources_expression:\n  # capture_encoded names an encoded position, but the match still admits no\n  # encoding until allow_encoded opts it in. Without the option an\n  # encoded path fails closed, so the node and the option must be paired. A\n  # plain segment still matches, since it carries no encoding to gate.\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # capture_encoded names an encoded\n  # segment. Without allow_encoded the\n  # match admits no encoding, so an\n  # encoded path fails closed.\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))))",
         "input": "request:\n    method: GET\n    path: /registry/@babel%2fcore\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "GitLab project id, plain or encoded, in one node",
-        "rule": "role_name: developer\napp_resources_expression:\n  # A GitLab project id is either a numeric id (123) or a URL-encoded\n  # \"group/project\" path. capture_encoded binds both forms as one raw\n  # segment, with no OR-doubling between a plain and an encoded matcher. The\n  # match opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"), greedy())),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # allow_encoded opts in the encoded\n  # separator. One capture_encoded binds\n  # a plain id (123) or an encoded\n  # group/project, no OR-doubling.\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"), greedy())),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/123/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "encoded_literal pins one group/project by its decoded value",
-        "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal matches one segment by its decoded value, so it pins an\n  # exact GitLab id in the path tree, in either hex case (%2F or %2f), without\n  # the case-sensitive equality a where check on the raw value would need. The\n  # \"/\" in the value is content, not a separator: the node is one segment. The\n  # match opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal pins one segment by\n  # its decoded value, in either hex case\n  # (%2F or %2f). The \"/\" is content, not\n  # a separator: the node is one segment.\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "npm scoped package keeps its literal \"@\" raw",
-        "rule": "role_name: developer\napp_resources_expression:\n  # An npm scoped package is /@scope%2fname. The \"@\" is a legal pchar and the\n  # slash between scope and name is encoded. capture_encoded binds the whole\n  # id raw, so the \"@\" is forwarded as \"@\", never re-encoded to %40. The match\n  # opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # An npm id is /@scope%2fname.\n  # capture_encoded binds it raw, so the\n  # \"@\" is forwarded as \"@\", never %40.\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /registry/@babel%2fcore\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {

@@ -5,11 +5,11 @@
     "01_path/trailing_slash.yaml",
     "02_method/single_method.yaml",
     "08_trailing_slash/slash_the_bare_root_path.yaml",
-    "09_encoded_slash/gitlab_files_route.yaml",
-    "09_encoded_slash/greedy_is_safe_only.yaml",
-    "09_encoded_slash/inner_check_in_where.yaml",
-    "09_encoded_slash/double_encoded_slash_is_invalid.yaml",
-    "09_encoded_slash/smuggled_dot_dot.yaml",
+    "09_encoded_slash/06_gitlab_files_route.yaml",
+    "09_encoded_slash/07_inner_check_in_where.yaml",
+    "09_encoded_slash/08_double_encoded_slash_is_invalid.yaml",
+    "09_encoded_slash/09_smuggled_dot_dot.yaml",
+    "09_encoded_slash/10_greedy_is_safe_only.yaml",
     "05_combination/carve_out_that_decodes_too.yaml",
     "05_combination/carve_out_negation.yaml",
     "06_carve_outs/greedy_except_a_capture_inside_is_a_load_error.yaml",
@@ -42,11 +42,6 @@
     "07_root_paths/root_several_first_segments_in_one_tree.yaml",
     "07_root_paths/root_a_path_under_no_root_is_denied.yaml",
     "07_root_paths/root_nested_anywhere_but_the_top_is_a_load_error.yaml",
-    "09_encoded_slash/encoded_node_needs_the_option.yaml",
-    "09_encoded_slash/gitlab_project_id.yaml",
-    "09_encoded_slash/encoded_literal_pins_a_group.yaml",
-    "09_encoded_slash/npm_scoped_package.yaml",
-    "09_encoded_slash/capstone_encoded_id_and_a_carve_out.yaml",
     "10_allow_deny_codes/allow_code_and_reason.yaml",
     "10_allow_deny_codes/deny_hint_path_matched_where_failed.yaml",
     "10_allow_deny_codes/deny_hints_across_rules_only_some_fire.yaml"
@@ -69,7 +64,7 @@
           "name": "4. capture a segment, check a trait"
         },
         {
-          "from": "09_encoded_slash/capstone_encoded_id_and_a_carve_out.yaml",
+          "from": "09_encoded_slash/05_capstone_encoded_id_and_a_carve_out.yaml",
           "name": "5. the whole model in one tree"
         }
       ]
