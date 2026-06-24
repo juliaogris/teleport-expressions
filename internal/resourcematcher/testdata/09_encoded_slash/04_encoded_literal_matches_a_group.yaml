@@ -1,4 +1,4 @@
-description: encoded_literal pins one group/project by its decoded value
+description: encoded_literal matches one group/project by its decoded value
 app_resources_expression:
     # encoded_literal matches one segment by
     # its decoded value, in either hex case

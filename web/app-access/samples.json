@@ -161,6 +161,11 @@
         "name": "greedy_except: add greedy() to exclude the whole subtree",
         "rule": "role_name: developer\napp_resources_expression:\n  # same as greedy_without(\"secret\"): the\n  # greedy() excludes the whole subtree.\n  # denies /files/secret/key\n  # allows /files/public/x\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\", greedy()))))",
         "input": "request:\n    method: GET\n    path: /files/secret/key\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
+        "name": "greedy_except: re-allow a path inside a denied subtree",
+        "rule": "role_name: developer\napp_resources_expression:\n  # denies the secret subtree but re-allows\n  # secret/public nested inside it.\n  # allows /files/secret/public/y\n  # denies /files/secret/x\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\",\n            greedy_except(literal(\"public\", greedy()))))))",
+        "input": "request:\n    method: GET\n    path: /files/secret/public/y\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
@@ -203,7 +208,7 @@
         "input": "request:\n    method: GET\n    path: /api/v4/projects/123/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
-        "name": "encoded_literal pins one group/project by its decoded value",
+        "name": "encoded_literal matches one group/project by its decoded value",
         "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal matches one segment by\n  # its decoded value, in either hex case\n  # (%2F or %2f).\n  # allows project mygroup%2Fmyproject\n  # denies project other%2Fthing\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
