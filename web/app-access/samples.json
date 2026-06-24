@@ -24,7 +24,7 @@
       },
       {
         "name": "5. the whole model in one tree",
-        "rule": "role_name: developer\napp_resources_expression:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret/key\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_except(literal(\"secret\", greedy())))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_without(\"secret\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -209,7 +209,7 @@
       },
       {
         "name": "an encoded id, a carved-out subtree, and the encoded-slash opt-in",
-        "rule": "role_name: developer\napp_resources_expression:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret/key\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_except(literal(\"secret\", greedy())))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_without(\"secret\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
