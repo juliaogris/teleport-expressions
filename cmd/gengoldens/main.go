@@ -363,7 +363,19 @@ func examplesFromGolden(g goldenFile, raw []byte) ([]example, error) {
 		return nil, err
 	}
 	if len(g.Cases) == 0 {
-		return []example{{Name: g.Description, Rule: rule, Input: ""}}, nil
+		// A load-error example carries no cases, since the rule never compiles
+		// to evaluate a request. Still emit a representative input so the
+		// playground field is not blank: the rule fails to load regardless of
+		// the request, so any request surfaces the same load error.
+		id := g.Identity
+		if id == nil {
+			id = &identity{Name: "bob", Roles: []string{"developer"}}
+		}
+		input, err := inputYAML(request{Method: "GET", Path: "/"}, id)
+		if err != nil {
+			return nil, err
+		}
+		return []example{{Name: g.Description, Rule: rule, Input: input}}, nil
 	}
 	c := g.Cases[0]
 	id := g.Identity

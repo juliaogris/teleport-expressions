@@ -154,12 +154,12 @@
       },
       {
         "name": "greedy_except: exact segment, subtree still allowed",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\"))))",
-        "input": "request:\n    method: GET\n    path: /files/secret/notes\nidentity:\n    name: bob\n    roles:\n        - developer"
+        "rule": "role_name: developer\napp_resources_expression:\n  # allows /files/secret/other\n  # denies /files/secret\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\"))))",
+        "input": "request:\n    method: GET\n    path: /files/secret/other\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "greedy_except: add greedy() to exclude the whole subtree",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\", greedy()))))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # same as greedy_without(\"secret\"): the\n  # greedy() excludes the whole subtree.\n  # denies /files/secret/key\n  # allows /files/public/x\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\", greedy()))))",
         "input": "request:\n    method: GET\n    path: /files/secret/key\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -180,7 +180,7 @@
       {
         "name": "root: nested anywhere but the top is a load error",
         "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(literal(\"files\",\n        root(literal(\"a\"), literal(\"b\"))))",
-        "input": ""
+        "input": "request:\n    method: GET\n    path: /\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
