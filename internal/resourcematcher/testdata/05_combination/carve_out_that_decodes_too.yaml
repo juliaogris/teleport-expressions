@@ -1,10 +1,9 @@
 description: carve-out and the strict tokenizer
 app_resources_expression:
-    # A negated carve-out denies
-    # files/secret. Reaching it with an
-    # encoded "s" (%73) never decodes: the
-    # tokenizer rejects the escape, so the
-    # path is invalid before the rule runs.
+    # A negated carve-out denies files/secret. An attempt to reach it with an
+    # encoded "s" (%73) never decodes: the strict tokenizer rejects any escape
+    # that is not the encoded separator, so the request is invalid before a
+    # rule runs rather than slipping past the negation.
     - |-
       !path.match(literal("files",
           literal("secret", greedy())))

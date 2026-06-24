@@ -1,7 +1,5 @@
-description: 'greedy_without: exclude and carve out subtrees'
+description: 'greedy_without: exclude subtrees (string sugar)'
 app_resources_expression:
-    # allows /files/reports/q3
-    # denies /files/secret/key
     - |-
       path.match(literal("files",
           greedy_without("secret", "private")))
@@ -17,13 +15,13 @@ cases:
         allowed: true
     - request:
         method: GET
-        path: /files/secret/key
+        path: /files/private/x
       expect:
         allowed: false
         deny_kind: teleport_request_not_allowed
     - request:
         method: GET
-        path: /files/%73ecret/key
+        path: /files/secret
       expect:
         allowed: false
-        deny_kind: teleport_invalid_request
+        deny_kind: teleport_request_not_allowed

@@ -1,10 +1,11 @@
-description: 'glob_without: exclude single segments'
+description: carve-out (negation)
 app_resources_expression:
-    # allows /files/report
-    # denies /files/a/b and /files/secret
+    # Allow every path, then carve out the admin subtree with a negated
+    # path.match. Path matching lives in the expression, never in a sugared
+    # where, so the grant and the carve-out share one predicate.
     - |-
-      path.match(literal("files",
-          glob_without(set("private", "secret"))))
+      path.match(greedy()) &&
+      !path.match(literal("admin", greedy()))
 identity:
     name: bob
     roles:
@@ -12,18 +13,18 @@ identity:
 cases:
     - request:
         method: GET
-        path: /files/report
+        path: /api/users
       expect:
         allowed: true
     - request:
         method: GET
-        path: /files/a/b
+        path: /admin/users
       expect:
         allowed: false
         deny_kind: teleport_request_not_allowed
     - request:
         method: GET
-        path: /files/secret
+        path: /admin
       expect:
         allowed: false
         deny_kind: teleport_request_not_allowed

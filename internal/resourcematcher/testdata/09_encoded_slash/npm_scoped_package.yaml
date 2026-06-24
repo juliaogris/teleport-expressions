@@ -1,10 +1,9 @@
 description: npm scoped package keeps its literal "@" raw
 app_resources_expression:
-    # npm scoped package: /@scope%2fname,
-    # as the npm registry addresses it.
-    # capture_encoded binds the id raw, so
-    # the "@" forwards as "@", never %40.
-    # allow_encoded opts in the slash.
+    # An npm scoped package is /@scope%2fname. The "@" is a legal pchar and the
+    # slash between scope and name is encoded. capture_encoded binds the whole
+    # id raw, so the "@" is forwarded as "@", never re-encoded to %40. The match
+    # opts into the encoded separator with allow_encoded(set("/")).
     - |-
       path.match(literal("registry",
           capture_encoded("package", set("/"))), allow_encoded(set("/")))

@@ -1,11 +1,9 @@
 description: a broad ** never spans an encoded slash
 app_resources:
-    # greedy is safe-only: it spans only
-    # segments with no encoding. /files/**
-    # matches a plain tail but stops at an
-    # encoded slash, so it never admits one.
-    # The path is valid, it just matches no
-    # rule.
+    # greedy is repeated safe glob: it spans only segments with no percent
+    # encoding. A broad /files/** therefore matches a plain tail but stops at an
+    # encoded slash, so it cannot silently admit one. The request is well-formed
+    # (the encoded slash tokenizes fine), it just matches no rule.
     - paths:
         - /files/**
 app_resources_desugared:
