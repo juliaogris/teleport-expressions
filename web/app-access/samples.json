@@ -189,22 +189,22 @@
     "examples": [
       {
         "name": "an encoded node without allow_encoded fails closed",
-        "rule": "role_name: developer\napp_resources_expression:\n  # capture_encoded names an encoded\n  # segment. Without allow_encoded the\n  # match admits no encoding, so an\n  # encoded path fails closed.\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # capture_encoded names an encoded\n  # segment; without allow_encoded it\n  # fails closed.\n  # denies /registry/@babel%2fcore\n  # allows /registry/lodash\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))))",
         "input": "request:\n    method: GET\n    path: /registry/@babel%2fcore\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "npm scoped package keeps its literal \"@\" raw",
-        "rule": "role_name: developer\napp_resources_expression:\n  # allow_encoded now opts the match in. A\n  # scoped npm package is /@scope%2fname;\n  # capture_encoded binds it raw, so the\n  # \"@\" stays \"@\", never %40.\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # allow_encoded now opts the match in.\n  # capture_encoded binds /@scope%2fname\n  # raw, so \"@\" stays \"@\", never %40.\n  # allows /registry/@babel%2fcore\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /registry/@babel%2fcore\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "GitLab project id, plain or encoded, in one node",
-        "rule": "role_name: developer\napp_resources_expression:\n  # One capture_encoded binds a plain id\n  # (123) or an encoded group/project in a\n  # single node.\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"), greedy())),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # One capture_encoded binds a plain id or\n  # an encoded group/project in one node.\n  # allows /api/v4/projects/123/issues\n  # allows /api/v4/projects/g%2Fp/issues\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"), greedy())),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/123/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "encoded_literal pins one group/project by its decoded value",
-        "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal matches one segment by\n  # its decoded value, in either hex case\n  # (%2F or %2f). The \"/\" is content, not\n  # a separator: the node is one segment.\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal matches one segment by\n  # its decoded value, in either hex case\n  # (%2F or %2f).\n  # allows /api/v4/projects/g%2Fp/issues\n  # denies /api/v4/projects/x%2Fy/issues\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {

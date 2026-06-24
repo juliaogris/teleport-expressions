@@ -1,9 +1,10 @@
 description: an encoded node without allow_encoded fails closed
 app_resources_expression:
     # capture_encoded names an encoded
-    # segment. Without allow_encoded the
-    # match admits no encoding, so an
-    # encoded path fails closed.
+    # segment; without allow_encoded it
+    # fails closed.
+    # denies /registry/@babel%2fcore
+    # allows /registry/lodash
     - |-
       path.match(literal("registry",
           capture_encoded("package", set("/"))))
