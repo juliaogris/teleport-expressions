@@ -1,26 +1,15 @@
 description: GitLab files route, encoded id and encoded file path
-rules:
+app_resources_expression:
     # The files API takes an encoded id and
     # an encoded file path. Each encoded
     # position is named, and binds raw and
     # forwards byte-faithful. allow_encoded
     # opts in the slash.
-    - pred: |-
-        path.match(literal("api/v4/projects",
-            capture_encoded("project", set("/"),
-                literal("repository/files",
-                    capture_encoded("file", set("/"))))), allow_encoded(set("/")))
-rules_desugared:
-    - pred: |-
-        path.match(
-          literal("api/v4/projects",
-            capture_encoded("project",
-              set("/"),
+    - |-
+      path.match(literal("api/v4/projects",
+          capture_encoded("project", set("/"),
               literal("repository/files",
-                capture_encoded("file",
-                  set("/"))))),
-          allow_encoded(
-            set("/")))
+                  capture_encoded("file", set("/"))))), allow_encoded(set("/")))
 identity:
     name: bob
     roles:

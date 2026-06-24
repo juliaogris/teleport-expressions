@@ -1,19 +1,13 @@
 description: an encoded node without allow_encoded fails closed
-rules:
+app_resources_expression:
     # capture_encoded names an encoded
     # position, but the match admits no
     # encoding until allow_encoded opts it
     # in. Without it an encoded path fails
     # closed; a plain segment still matches.
-    - pred: |-
-        path.match(literal("registry",
-            capture_encoded("package", set("/"))))
-rules_desugared:
-    - pred: |-
-        path.match(
-          literal("registry",
-            capture_encoded("package",
-              set("/"))))
+    - |-
+      path.match(literal("registry",
+          capture_encoded("package", set("/"))))
 identity:
     name: bob
     roles:

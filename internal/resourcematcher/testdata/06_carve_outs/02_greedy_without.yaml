@@ -1,15 +1,10 @@
 description: 'greedy_without: exclude and carve out subtrees'
-rules:
+app_resources_expression:
     # allows /files/reports/q3
     # denies /files/secret/key
-    - where: |-
-        path.match(literal("files",
-            greedy_without("secret", "private")))
-rules_desugared:
-    - pred: |-
-        path.match(
-          literal("files",
-            greedy_without("secret", "private")))
+    - |-
+      path.match(literal("files",
+          greedy_without("secret", "private")))
 identity:
     name: bob
     roles:

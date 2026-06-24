@@ -1,23 +1,14 @@
 description: encoded_literal pins one group/project by its decoded value
-rules:
+app_resources_expression:
     # encoded_literal pins one id by its
     # decoded value, in either hex case
     # (%2F or %2f). The "/" is content, so
     # the node stays one segment.
     # allow_encoded opts in the slash.
-    - pred: |-
-        path.match(literal("api/v4/projects",
-            encoded_literal("mygroup/myproject", set("/"),
-                literal("issues"))), allow_encoded(set("/")))
-rules_desugared:
-    - pred: |-
-        path.match(
-          literal("api/v4/projects",
-            encoded_literal("mygroup/myproject",
-              set("/"),
-              literal("issues"))),
-          allow_encoded(
-            set("/")))
+    - |-
+      path.match(literal("api/v4/projects",
+          encoded_literal("mygroup/myproject", set("/"),
+              literal("issues"))), allow_encoded(set("/")))
 identity:
     name: bob
     roles:

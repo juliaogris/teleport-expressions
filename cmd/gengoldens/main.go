@@ -50,13 +50,14 @@ type request struct {
 }
 
 // goldenFile is the subset of a golden testdata file this command reads. It
-// ignores the generated rules_desugared and expect blocks, since the playground
-// evaluates live and shows its own result.
+// ignores the generated app_resources_desugared and expect blocks, since the
+// playground evaluates live and shows its own result.
 type goldenFile struct {
-	Description string    `yaml:"description"`
-	Rules       []rm.Rule `yaml:"rules"`
-	Identity    *identity `yaml:"identity"`
-	Cases       []struct {
+	Description      string    `yaml:"description"`
+	AppResources     []rm.Rule `yaml:"app_resources"`
+	AppResourcesExpr []string  `yaml:"app_resources_expression"`
+	Identity         *identity `yaml:"identity"`
+	Cases            []struct {
 		Request  request   `yaml:"request"`
 		Identity *identity `yaml:"identity"`
 	} `yaml:"cases"`
@@ -338,12 +339,13 @@ func examplesFromGolden(g goldenFile, raw []byte) ([]example, error) {
 	return []example{{Name: g.Description, Rule: rule, Input: input}}, nil
 }
 
-// ruleYAML renders the golden rules as the role-wrapped app_resources YAML the
-// playground rule field expects, choosing the identity's first role as the role
-// name, or "developer" when none is set. It lifts the rules straight out of the
-// raw testdata document as a yaml.Node rather than re-marshaling the parsed
-// struct, so the author's explanatory comments survive into the playground. The
-// rules node is re-emitted under app_resources at the playground's two-space
+// ruleYAML renders the golden rules as the role-wrapped YAML the playground
+// rule field expects, choosing the identity's first role as the role name, or
+// "developer" when none is set. It lifts the rule nodes straight out of the raw
+// testdata document as yaml.Node values rather than re-marshaling the parsed
+// struct, so the author's explanatory comments survive into the playground. Both
+// the sugared app_resources and the bare app_resources_expression are re-emitted
+// under role_name, whichever the file carries, at the playground's two-space
 // indent.
 func ruleYAML(g goldenFile, raw []byte) (string, error) {
 	role := "developer"
@@ -357,19 +359,22 @@ func ruleYAML(g goldenFile, raw []byte) (string, error) {
 	if len(doc.Content) == 0 {
 		return "", fmt.Errorf("empty document")
 	}
-	rules := mapValue(doc.Content[0], "rules")
-	if rules == nil {
-		return "", fmt.Errorf("no rules key")
+	content := []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "role_name"},
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: role},
 	}
-	wrapped := &yaml.Node{
-		Kind: yaml.MappingNode,
-		Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "role_name"},
-			{Kind: yaml.ScalarNode, Tag: "!!str", Value: role},
-			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "app_resources"},
-			rules,
-		},
+	if res := mapValue(doc.Content[0], "app_resources"); res != nil {
+		content = append(content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "app_resources"}, res)
 	}
+	if expr := mapValue(doc.Content[0], "app_resources_expression"); expr != nil {
+		content = append(content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "app_resources_expression"}, expr)
+	}
+	if len(content) == 2 {
+		return "", fmt.Errorf("no app_resources or app_resources_expression key")
+	}
+	wrapped := &yaml.Node{Kind: yaml.MappingNode, Content: content}
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)

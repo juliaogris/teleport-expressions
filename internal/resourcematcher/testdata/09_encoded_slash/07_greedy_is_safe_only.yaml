@@ -1,5 +1,5 @@
 description: a broad ** never spans an encoded slash
-rules:
+app_resources:
     # greedy is safe-only: it spans only
     # segments with no encoding. /files/**
     # matches a plain tail but stops at an
@@ -8,11 +8,11 @@ rules:
     # rule.
     - paths:
         - /files/**
-rules_desugared:
-    - pred: |-
-        path.match(
-          literal("files",
-            greedy()))
+app_resources_desugared:
+    - |-
+      path.match(
+        literal("files",
+          greedy()))
 identity:
     name: bob
     roles:

@@ -4,3 +4,4 @@ web/labels/eval.wasm
 web/app-access/eval.wasm
 web/labels/wasm_exec.js
 web/app-access/wasm_exec.js
+/gengoldens

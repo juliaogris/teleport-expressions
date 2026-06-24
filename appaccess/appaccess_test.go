@@ -97,8 +97,8 @@ identity:
 			want: false,
 		},
 		{
-			name: "where holds the whole predicate",
-			rule: "role_name: tester\napp_resources:\n  - where: path.match(greedy())",
+			name: "expression holds the whole predicate",
+			rule: "role_name: tester\napp_resources_expression:\n  - path.match(greedy())",
 			in:   allowedInput,
 			want: true,
 		},
@@ -117,8 +117,8 @@ app_resources:
 			wantVars: map[string]string{"project": "alpha"},
 		},
 		{
-			name:    "both surfaces is a compile error",
-			rule:    "role_name: tester\napp_resources:\n  - paths: [/api/**]\n    pred: path.match(greedy())",
+			name:    "path.match in a sugared where is a compile error",
+			rule:    "role_name: tester\napp_resources:\n  - where: path.match(greedy())",
 			in:      allowedInput,
 			wantErr: true,
 		},
@@ -133,7 +133,7 @@ app_resources:
 			// encoded GitLab-style id matches and binds the whole value. The match
 			// opts into the encoded separator with allow_encoded(set("/")).
 			name: "capture_encoded binds an encoded id raw",
-			rule: "role_name: tester\napp_resources:\n  - pred: |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))), allow_encoded(set(\"/\")))",
+			rule: "role_name: tester\napp_resources_expression:\n  - |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))), allow_encoded(set(\"/\")))",
 			in: mustInput(t, `
 request:
   method: GET

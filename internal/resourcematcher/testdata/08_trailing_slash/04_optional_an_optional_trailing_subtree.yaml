@@ -1,17 +1,11 @@
 description: 'optional: an optional trailing subtree'
-rules:
+app_resources_expression:
     # The path may end at files, or carry
     # the optional reports tail, from one
     # tree with no duplicated prefix.
-    - where: |-
-        path.match(literal("files",
-            optional(literal("reports"))))
-rules_desugared:
-    - pred: |-
-        path.match(
-          literal("files",
-            optional(
-              literal("reports"))))
+    - |-
+      path.match(literal("files",
+          optional(literal("reports"))))
 identity:
     name: bob
     roles:
