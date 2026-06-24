@@ -194,17 +194,17 @@
       },
       {
         "name": "GitLab project id, plain or encoded, in one node",
-        "rule": "role_name: developer\napp_resources_expression:\n  # A GitLab project id is either a numeric id (123) or a URL-encoded\n  # \"group/project\" path. capture_encoded binds both forms as one raw\n  # segment, with no OR-doubling between a plain and an encoded matcher. The\n  # match opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"), greedy())), allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # A GitLab project id is either a numeric id (123) or a URL-encoded\n  # \"group/project\" path. capture_encoded binds both forms as one raw\n  # segment, with no OR-doubling between a plain and an encoded matcher. The\n  # match opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"), greedy())),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/123/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "encoded_literal pins one group/project by its decoded value",
-        "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal matches one segment by its decoded value, so it pins an\n  # exact GitLab id in the path tree, in either hex case (%2F or %2f), without\n  # the case-sensitive equality a where check on the raw value would need. The\n  # \"/\" in the value is content, not a separator: the node is one segment. The\n  # match opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))), allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal matches one segment by its decoded value, so it pins an\n  # exact GitLab id in the path tree, in either hex case (%2F or %2f), without\n  # the case-sensitive equality a where check on the raw value would need. The\n  # \"/\" in the value is content, not a separator: the node is one segment. The\n  # match opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "npm scoped package keeps its literal \"@\" raw",
-        "rule": "role_name: developer\napp_resources_expression:\n  # An npm scoped package is /@scope%2fname. The \"@\" is a legal pchar and the\n  # slash between scope and name is encoded. capture_encoded binds the whole\n  # id raw, so the \"@\" is forwarded as \"@\", never re-encoded to %40. The match\n  # opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))), allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expression:\n  # An npm scoped package is /@scope%2fname. The \"@\" is a legal pchar and the\n  # slash between scope and name is encoded. capture_encoded binds the whole\n  # id raw, so the \"@\" is forwarded as \"@\", never re-encoded to %40. The match\n  # opts into the encoded separator with allow_encoded(set(\"/\")).\n  - |-\n    path.match(literal(\"registry\",\n        capture_encoded(\"package\", set(\"/\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /registry/@babel%2fcore\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
