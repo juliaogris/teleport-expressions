@@ -16,7 +16,8 @@
     "06_carve_outs/glob_without_one_segment_only_deeper_is_denied.yaml",
     "06_carve_outs/greedy_without_encoded_path_can_t_slip_the_deny.yaml",
     "06_carve_outs/greedy_without_the_carved_subtree_is_denied.yaml",
-    "10_allow_deny_codes/deny_code_where_only_fires_on_any_deny.yaml"
+    "02_method/unknown_method_is_a_load_error.yaml",
+    "11_default_deny/a_rule_must_scope_or_allow_all.yaml"
   ],
   "order": [
     "01_path/exact.yaml",
@@ -46,7 +47,9 @@
     "07_root_paths/root_nested_anywhere_but_the_top_is_a_load_error.yaml",
     "10_allow_deny_codes/allow_code_and_reason.yaml",
     "10_allow_deny_codes/deny_hint_path_matched_where_failed.yaml",
-    "10_allow_deny_codes/deny_hints_across_rules_only_some_fire.yaml"
+    "10_allow_deny_codes/deny_hints_across_rules_only_some_fire.yaml",
+    "11_default_deny/unsafe_allow_all_grants_everything.yaml",
+    "11_default_deny/unsafe_allow_all_cannot_combine.yaml"
   ],
   "topics": [
     {

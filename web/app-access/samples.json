@@ -245,6 +245,21 @@
     ]
   },
   {
+    "topic": "default deny",
+    "examples": [
+      {
+        "name": "unsafe_allow_all grants every path and method",
+        "rule": "role_name: developer\napp_resources:\n  # The escape hatch: grant the whole app,\n  # any method, any path, even an encoded\n  # slash mid-path that /** would reject.\n  # allows GET /anything/at/all\n  # allows a mid-path %2F\n  - unsafe_allow_all: true",
+        "input": "request:\n    method: GET\n    path: /anything/at/all\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
+        "name": "unsafe_allow_all cannot be combined with another field",
+        "rule": "role_name: developer\napp_resources:\n  # unsafe_allow_all is all-or-nothing, so\n  # pairing it with paths (or any field) is\n  # a load error rather than a silent ignore.\n  - unsafe_allow_all: true\n    paths:\n      - /api/**",
+        "input": "request:\n    method: GET\n    path: /\nidentity:\n    name: bob\n    roles:\n        - developer"
+      }
+    ]
+  },
+  {
     "topic": "roles",
     "examples": [
       {

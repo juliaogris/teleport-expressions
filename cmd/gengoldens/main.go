@@ -293,6 +293,7 @@ var topicOrder = []string{
 	"root paths",
 	"encoded slash",
 	"allow / deny codes",
+	"default deny",
 	"roles",
 }
 
