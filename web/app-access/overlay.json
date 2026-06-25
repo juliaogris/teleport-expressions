@@ -28,6 +28,7 @@
     "02_method/wrong_method_denied.yaml",
     "04_capture/checked_against_a_set.yaml",
     "04_capture/checked_against_a_trait.yaml",
+    "04_capture/case_insensitive_with_lower.yaml",
     "04_capture/equals_identity.yaml",
     "08_trailing_slash/slash_a_trailing_slash_is_required.yaml",
     "08_trailing_slash/optional_match_with_or_without_a_trailing_slash.yaml",

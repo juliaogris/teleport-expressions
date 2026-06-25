@@ -88,6 +88,11 @@
         "input": "request:\n    method: GET\n    path: /api/v4/projects/alpha/issues\nidentity:\n    name: alice\n    roles:\n        - developer\n    traits:\n        allowed_projects:\n            - alpha\n            - beta"
       },
       {
+        "name": "case-insensitive capture check with lower",
+        "rule": "role_name: developer\napp_resources:\n  # lower folds the captured project so the\n  # trait check matches regardless of case,\n  # so \"Alpha\" and \"alpha\" both qualify.\n  - paths:\n      - /api/v4/projects/{project}/**\n    where: contains(user.traits[\"allowed_projects\"], lower(vars.project))",
+        "input": "request:\n    method: GET\n    path: /api/v4/projects/Alpha/issues\nidentity:\n    name: alice\n    roles:\n        - developer\n    traits:\n        allowed_projects:\n            - alpha\n            - beta"
+      },
+      {
         "name": "equals identity",
         "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/user/{username}\n    where: user.name == vars.username",
         "input": "request:\n    method: GET\n    path: /api/v4/user/alice\nidentity:\n    name: alice\n    roles:\n        - developer"
