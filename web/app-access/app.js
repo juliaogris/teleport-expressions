@@ -361,9 +361,9 @@ function renderNow() {
   if (!out.allowed && hints.length > 0) {
     text += "\ndeny_hints:";
     for (const h of hints) {
-      text += "\n  - deny_code: " + escapeHtml(h.denyCode);
+      text += "\n  - deny_code_hint: " + escapeHtml(h.denyCode);
       if (h.denyReason) {
-        text += "\n    deny_reason: " + escapeHtml(h.denyReason);
+        text += "\n    deny_reason_hint: " + escapeHtml(h.denyReason);
       }
     }
   }

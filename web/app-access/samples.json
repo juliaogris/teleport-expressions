@@ -234,17 +234,17 @@
     "examples": [
       {
         "name": "allow code and reason",
-        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: User has access to project\n    deny_code: denied_project\n    deny_reason: User has NO access to project",
+        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: User has access to project\n    deny_code_hint: denied_project\n    deny_reason_hint: User has NO access to project",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/alpha/issues\nidentity:\n    name: alice\n    roles:\n        - developer\n    traits:\n        allowed_projects:\n            - alpha\n            - beta"
       },
       {
         "name": "deny hint: path matched, where failed",
-        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: User has access to project\n    # deny_code is reported on the near-miss: the path and\n    # method matched but the where failed.\n    deny_code: denied_project\n    deny_reason: User has NO access to project",
+        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    allow_code: allowed_project\n    allow_reason: User has access to project\n    # deny_code_hint is reported on the near-miss: the path and\n    # method matched but the where failed.\n    deny_code_hint: denied_project\n    deny_reason_hint: User has NO access to project",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/gamma/issues\nidentity:\n    name: alice\n    roles:\n        - developer\n    traits:\n        allowed_projects:\n            - alpha\n            - beta"
       },
       {
         "name": "deny hints across rules, only some fire",
-        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    deny_code: denied_project\n    deny_reason: Not allowed on this project\n  - paths:\n      - /api/v4/admin/**\n    where: contains(user.roles, \"admin\")\n    deny_code: denied_admin\n    deny_reason: Admin role required",
+        "rule": "role_name: developer\napp_resources:\n  - paths:\n      - /api/v4/projects/{project}/**\n    where: contains(user.traits[\"allowed_projects\"], vars.project)\n    deny_code_hint: denied_project\n    deny_reason_hint: Not allowed on this project\n  - paths:\n      - /api/v4/admin/**\n    where: contains(user.roles, \"admin\")\n    deny_code_hint: denied_admin\n    deny_reason_hint: Admin role required",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/gamma/issues\nidentity:\n    name: bob\n    roles:\n        - developer\n    traits:\n        allowed_projects:\n            - alpha"
       }
     ]
