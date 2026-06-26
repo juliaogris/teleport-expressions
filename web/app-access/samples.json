@@ -191,11 +191,6 @@
         "name": "root: a path under no root is denied",
         "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(root(\n        literal(\"api\", greedy()),\n        literal(\"admin\", greedy())))",
         "input": "request:\n    method: GET\n    path: /public/x\nidentity:\n    name: bob\n    roles:\n        - developer"
-      },
-      {
-        "name": "root: nested anywhere but the top is a load error",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(literal(\"files\",\n        root(literal(\"a\"), literal(\"b\"))))",
-        "input": "request:\n    method: GET\n    path: /\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
