@@ -231,6 +231,11 @@
         "name": "an encoded id, a carved-out subtree, and the encoded-slash opt-in",
         "rule": "role_name: developer\napp_resources_expressions:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_without(\"secret\"))))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
+      },
+      {
+        "name": "scope an encoded group id with has_prefix on the decoded capture",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # {project:/} binds the decoded id, so\n  # has_prefix scopes it to the acme group.\n  # allows acme%2Fwidgets\n  # denies other%2Fwidgets\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"), greedy()))) \u0026\u0026\n    has_prefix(vars.project, \"acme/\")",
+        "input": "request:\n    method: GET\n    path: /api/v4/projects/acme%2Fwidgets/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
   },
