@@ -130,10 +130,10 @@ app_resources:
 		},
 		{
 			// capture_encoded binds an encoded segment's decoded value, so an
-			// encoded GitLab-style id matches and binds "a/b". The encoded node
-			// is the sole opt-in; no rule-wide encoding flag is needed.
+			// encoded GitLab-style id matches and binds "a/b". The match opts
+			// into the encoded separator with allow_encoded(set("/")).
 			name: "capture_encoded binds an encoded id decoded",
-			rule: "role_name: tester\napp_resources_expressions:\n  - |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))))",
+			rule: "role_name: tester\napp_resources_expressions:\n  - |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))), allow_encoded(set(\"/\")))",
 			in: mustInput(t, `
 request:
   method: GET
