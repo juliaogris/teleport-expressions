@@ -129,10 +129,10 @@ app_resources:
 			want: false,
 		},
 		{
-			// capture_encoded binds an encoded segment raw as one token, so an
-			// encoded GitLab-style id matches and binds the whole value. The match
-			// opts into the encoded separator with allow_encoded(set("/")).
-			name: "capture_encoded binds an encoded id raw",
+			// capture_encoded binds an encoded segment's decoded value, so an
+			// encoded GitLab-style id matches and binds "a/b". The match opts
+			// into the encoded separator with allow_encoded(set("/")).
+			name: "capture_encoded binds an encoded id decoded",
 			rule: "role_name: tester\napp_resources_expression:\n  - |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))), allow_encoded(set(\"/\")))",
 			in: mustInput(t, `
 request:
@@ -143,7 +143,7 @@ identity:
   roles: [tester]
 `),
 			want:     true,
-			wantVars: map[string]string{"x": "a%2Fb"},
+			wantVars: map[string]string{"x": "a/b"},
 		},
 		{
 			name: "user lacks the role denies",

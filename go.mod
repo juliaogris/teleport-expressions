@@ -1,12 +1,13 @@
 module github.com/juliaogris/teleport-expressions
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/gravitational/trace v1.5.4
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/stretchr/testify v1.8.3
 	github.com/vulcand/predicate v1.3.0
+	golang.org/x/text v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
