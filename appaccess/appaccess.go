@@ -38,9 +38,9 @@ type Input struct {
 // rules from every role a user holds; this single field stands in for that one
 // role, so a deny can report which role was evaluated.
 type resourcesDoc struct {
-	RoleName         string    `yaml:"role_name,omitempty"`
-	AppResources     []rm.Rule `yaml:"app_resources,omitempty"`
-	AppResourcesExpr []string  `yaml:"app_resources_expression,omitempty"`
+	RoleName                string    `yaml:"role_name,omitempty"`
+	AppResources            []rm.Rule `yaml:"app_resources,omitempty"`
+	AppResourcesExpressions []string  `yaml:"app_resources_expressions,omitempty"`
 }
 
 // Result is the outcome of evaluating the rules. Vars holds the path segments
@@ -97,7 +97,7 @@ func Evaluate(resourcesYAML string, in Input) (Result, error) {
 	// request is a default deny.
 	var roles []rm.Role
 	if slices.Contains(in.Identity.Roles, doc.RoleName) {
-		roles = []rm.Role{{Name: doc.RoleName, Resources: doc.AppResources, Expressions: doc.AppResourcesExpr}}
+		roles = []rm.Role{{Name: doc.RoleName, Resources: doc.AppResources, Expressions: doc.AppResourcesExpressions}}
 	}
 	set, err := rm.CompileRoles(roles)
 	if err != nil {
@@ -133,20 +133,20 @@ func Evaluate(resourcesYAML string, in Input) (Result, error) {
 }
 
 // desugaredDoc is the output of Desugar: the role with every rule expressed as
-// a bare predicate under app_resources_expression, the parallel of
+// a bare predicate under app_resources_expressions, the parallel of
 // node_labels_expression. The sugared app_resources are gone, lowered into the
 // expression list, so the web page can show what a declarative rule compiles to
 // as one predicate.
 type desugaredDoc struct {
-	RoleName         string   `yaml:"role_name,omitempty"`
-	AppResourcesExpr []string `yaml:"app_resources_expression"`
+	RoleName                string   `yaml:"role_name,omitempty"`
+	AppResourcesExpressions []string `yaml:"app_resources_expressions"`
 }
 
 // Desugar lowers a role's sugared app_resources rules to bare predicate
-// strings and returns the role as app_resources_expression YAML. Each
+// strings and returns the role as app_resources_expressions YAML. Each
 // declarative rule collapses into one predicate over the path, method, and
 // identity, with the allow code lowered to an allow_code wrapper. Any rule the
-// author already wrote under app_resources_expression passes through after the
+// author already wrote under app_resources_expressions passes through after the
 // lowered ones. It lets the web page show the predicate a declarative rule
 // compiles to.
 func Desugar(resourcesYAML string) (string, error) {
@@ -155,13 +155,13 @@ func Desugar(resourcesYAML string) (string, error) {
 		return "", fmt.Errorf("parsing app_resources YAML: %w", err)
 	}
 
-	role := rm.Role{Name: doc.RoleName, Resources: doc.AppResources, Expressions: doc.AppResourcesExpr}
+	role := rm.Role{Name: doc.RoleName, Resources: doc.AppResources, Expressions: doc.AppResourcesExpressions}
 	lowered, err := rm.DesugarResources(role)
 	if err != nil {
 		return "", trace.Wrap(err, "desugaring app_resources")
 	}
 
-	out := desugaredDoc{RoleName: doc.RoleName, AppResourcesExpr: append(lowered, doc.AppResourcesExpr...)}
+	out := desugaredDoc{RoleName: doc.RoleName, AppResourcesExpressions: append(lowered, doc.AppResourcesExpressions...)}
 	// Encode at a two-space indent, matching the sugared rule the playground
 	// shows alongside, so the two panes line up rather than mixing yaml.v3's
 	// default four-space indent with the generated two-space sugar.

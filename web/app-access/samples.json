@@ -24,7 +24,7 @@
       },
       {
         "name": "5. the whole model in one tree",
-        "rule": "role_name: developer\napp_resources_expression:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_without(\"secret\"))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_without(\"secret\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -119,12 +119,12 @@
       },
       {
         "name": "optional: match with or without a trailing slash",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(literal(\"files\",\n        optional(slash())))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  - |-\n    path.match(literal(\"files\",\n        optional(slash())))",
         "input": "request:\n    method: GET\n    path: /files/\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "optional: an optional trailing subtree",
-        "rule": "role_name: developer\napp_resources_expression:\n  # The path may end at files, or carry\n  # the optional reports tail, from one\n  # tree with no duplicated prefix.\n  - |-\n    path.match(literal(\"files\",\n        optional(literal(\"reports\"))))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # The path may end at files, or carry\n  # the optional reports tail, from one\n  # tree with no duplicated prefix.\n  - |-\n    path.match(literal(\"files\",\n        optional(literal(\"reports\"))))",
         "input": "request:\n    method: GET\n    path: /files\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -144,7 +144,7 @@
       },
       {
         "name": "carve-out (paths grant, negated subtree)",
-        "rule": "role_name: developer\napp_resources_expression:\n  # Allow all of /files, then carve out the\n  # /files/secret subtree with a negated\n  # path.match. The grant and the carve-out\n  # share one expression, since path matching\n  # never lives in a sugared where.\n  - |-\n    path.match(literal(\"files\", greedy())) \u0026\u0026\n    !path.match(literal(\"files\",\n        literal(\"secret\", greedy())))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # Allow all of /files, then carve out the\n  # /files/secret subtree with a negated\n  # path.match. The grant and the carve-out\n  # share one expression, since path matching\n  # never lives in a sugared where.\n  - |-\n    path.match(literal(\"files\", greedy())) \u0026\u0026\n    !path.match(literal(\"files\",\n        literal(\"secret\", greedy())))",
         "input": "request:\n    method: GET\n    path: /files/a\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
@@ -164,27 +164,27 @@
       },
       {
         "name": "glob_without: exclude single segments",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(literal(\"files\",\n        glob_without(set(\"private\", \"secret\"))))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  - |-\n    path.match(literal(\"files\",\n        glob_without(set(\"private\", \"secret\"))))",
         "input": "request:\n    method: GET\n    path: /files/report\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "greedy_without: exclude and carve out subtrees",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(literal(\"files\",\n        greedy_without(\"secret\", \"private\")))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  - |-\n    path.match(literal(\"files\",\n        greedy_without(\"secret\", \"private\")))",
         "input": "request:\n    method: GET\n    path: /files/reports/q3\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "greedy_except: exact segment, subtree still allowed",
-        "rule": "role_name: developer\napp_resources_expression:\n  # allows /files/secret/other\n  # denies /files/secret\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\"))))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # allows /files/secret/other\n  # denies /files/secret\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\"))))",
         "input": "request:\n    method: GET\n    path: /files/secret/other\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "greedy_except: add greedy() to exclude the whole subtree",
-        "rule": "role_name: developer\napp_resources_expression:\n  # same as greedy_without(\"secret\"): the\n  # greedy() excludes the whole subtree.\n  # denies /files/secret/key\n  # allows /files/public/x\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\", greedy()))))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # same as greedy_without(\"secret\"): the\n  # greedy() excludes the whole subtree.\n  # denies /files/secret/key\n  # allows /files/public/x\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\", greedy()))))",
         "input": "request:\n    method: GET\n    path: /files/secret/key\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "greedy_except: re-allow a path inside a denied subtree",
-        "rule": "role_name: developer\napp_resources_expression:\n  # denies the secret subtree but re-allows\n  # secret/public nested inside it.\n  # allows /files/secret/public/y\n  # denies /files/secret/x\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\",\n            greedy_except(literal(\"public\", greedy()))))))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # denies the secret subtree but re-allows\n  # secret/public nested inside it.\n  # allows /files/secret/public/y\n  # denies /files/secret/x\n  - |-\n    path.match(literal(\"files\",\n        greedy_except(literal(\"secret\",\n            greedy_except(literal(\"public\", greedy()))))))",
         "input": "request:\n    method: GET\n    path: /files/secret/public/y\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -194,12 +194,12 @@
     "examples": [
       {
         "name": "root: several first segments in one tree",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(root(\n        literal(\"api\", greedy()),\n        literal(\"admin\", greedy())))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  - |-\n    path.match(root(\n        literal(\"api\", greedy()),\n        literal(\"admin\", greedy())))",
         "input": "request:\n    method: GET\n    path: /admin/settings\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "root: a path under no root is denied",
-        "rule": "role_name: developer\napp_resources_expression:\n  - |-\n    path.match(root(\n        literal(\"api\", greedy()),\n        literal(\"admin\", greedy())))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  - |-\n    path.match(root(\n        literal(\"api\", greedy()),\n        literal(\"admin\", greedy())))",
         "input": "request:\n    method: GET\n    path: /public/x\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]
@@ -224,12 +224,12 @@
       },
       {
         "name": "encoded_literal matches one group/project by its decoded value",
-        "rule": "role_name: developer\napp_resources_expression:\n  # encoded_literal matches one segment by\n  # its decoded value, in either hex case\n  # (%2F or %2f).\n  # allows project mygroup%2Fmyproject\n  # denies project other%2Fthing\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # encoded_literal matches one segment by\n  # its decoded value, in either hex case\n  # (%2F or %2f).\n  # allows project mygroup%2Fmyproject\n  # denies project other%2Fthing\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        encoded_literal(\"mygroup/myproject\", set(\"/\"),\n            literal(\"issues\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2Fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       },
       {
         "name": "an encoded id, a carved-out subtree, and the encoded-slash opt-in",
-        "rule": "role_name: developer\napp_resources_expression:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_without(\"secret\"))),\n    allow_encoded(set(\"/\")))",
+        "rule": "role_name: developer\napp_resources_expressions:\n  # allows /api/v4/projects/g%2fp/issues\n  # denies /api/v4/projects/g%2fp/secret\n  - |-\n    path.match(literal(\"api/v4/projects\",\n        capture_encoded(\"project\", set(\"/\"),\n            greedy_without(\"secret\"))),\n    allow_encoded(set(\"/\")))",
         "input": "request:\n    method: GET\n    path: /api/v4/projects/mygroup%2fmyproject/issues\nidentity:\n    name: bob\n    roles:\n        - developer"
       }
     ]

@@ -98,7 +98,7 @@ identity:
 		},
 		{
 			name: "expression holds the whole predicate",
-			rule: "role_name: tester\napp_resources_expression:\n  - path.match(greedy())",
+			rule: "role_name: tester\napp_resources_expressions:\n  - path.match(greedy())",
 			in:   allowedInput,
 			want: true,
 		},
@@ -133,7 +133,7 @@ app_resources:
 			// encoded GitLab-style id matches and binds "a/b". The match opts
 			// into the encoded separator with allow_encoded(set("/")).
 			name: "capture_encoded binds an encoded id decoded",
-			rule: "role_name: tester\napp_resources_expression:\n  - |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))), allow_encoded(set(\"/\")))",
+			rule: "role_name: tester\napp_resources_expressions:\n  - |-\n      path.match(literal(\"files\", capture_encoded(\"x\", set(\"/\"))), allow_encoded(set(\"/\")))",
 			in: mustInput(t, `
 request:
   method: GET

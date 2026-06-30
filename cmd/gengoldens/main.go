@@ -53,11 +53,11 @@ type request struct {
 // ignores the generated app_resources_desugared and expect blocks, since the
 // playground evaluates live and shows its own result.
 type goldenFile struct {
-	Description      string    `yaml:"description"`
-	AppResources     []rm.Rule `yaml:"app_resources"`
-	AppResourcesExpr []string  `yaml:"app_resources_expression"`
-	Identity         *identity `yaml:"identity"`
-	Cases            []struct {
+	Description             string    `yaml:"description"`
+	AppResources            []rm.Rule `yaml:"app_resources"`
+	AppResourcesExpressions []string  `yaml:"app_resources_expressions"`
+	Identity                *identity `yaml:"identity"`
+	Cases                   []struct {
 		Request  request   `yaml:"request"`
 		Identity *identity `yaml:"identity"`
 	} `yaml:"cases"`
@@ -395,9 +395,11 @@ func examplesFromGolden(g goldenFile, raw []byte) ([]example, error) {
 // "developer" when none is set. It lifts the rule nodes straight out of the raw
 // testdata document as yaml.Node values rather than re-marshaling the parsed
 // struct, so the author's explanatory comments survive into the playground. Both
-// the sugared app_resources and the bare app_resources_expression are re-emitted
+// the sugared app_resources or the bare app_resources_expressions is re-emitted
 // under role_name, whichever the file carries, at the playground's two-space
-// indent.
+// indent. When app_resources is present, app_resources_expressions is its
+// generated lowering, so the playground shows only the authored sugar; a bare
+// file shows its authored expressions instead.
 func ruleYAML(g goldenFile, raw []byte) (string, error) {
 	role := "developer"
 	if g.Identity != nil && len(g.Identity.Roles) > 0 {
@@ -417,13 +419,12 @@ func ruleYAML(g goldenFile, raw []byte) (string, error) {
 	if res := mapValue(doc.Content[0], "app_resources"); res != nil {
 		content = append(content,
 			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "app_resources"}, res)
-	}
-	if expr := mapValue(doc.Content[0], "app_resources_expression"); expr != nil {
+	} else if expr := mapValue(doc.Content[0], "app_resources_expressions"); expr != nil {
 		content = append(content,
-			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "app_resources_expression"}, expr)
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "app_resources_expressions"}, expr)
 	}
 	if len(content) == 2 {
-		return "", fmt.Errorf("no app_resources or app_resources_expression key")
+		return "", fmt.Errorf("no app_resources or app_resources_expressions key")
 	}
 	wrapped := &yaml.Node{Kind: yaml.MappingNode, Content: content}
 	var buf bytes.Buffer
